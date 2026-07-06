@@ -1,28 +1,18 @@
 "use client";
 
 import {
-  Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, Download, FileText, HandCoins,
-  HardHat, LayoutDashboard, Menu, Package, PackageCheck, Plus, Receipt, RotateCcw, Search, Send, Settings, TrendingUp,
-  UsersRound, WalletCards, X, type LucideIcon,
+  CheckCircle2, ChevronDown, Download,
+  Plus, Receipt, RotateCcw, Search, Send, TrendingUp,
+  WalletCards, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { financeDebts, FinancePayment, getFinanceDebts, getFinancePayments, getFinancePrepayments, initialFinancePayments, PaymentMethod, PaymentType, calculateFinanceStats } from "@/lib/finance/mock-finance";
 import { getMockClients, mockClients } from "@/lib/clients/mock-clients";
 import { getMockOrders, mockOrders } from "@/lib/order/mock-orders";
 import { addStoredPaymentForOrder } from "@/lib/storage";
 
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"],
-  [UsersRound, "Клиенты", "/clients"],
-  [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"],
-  [Package, "Склад", "/warehouse"],
-  [HandCoins, "Финансы", "/finance"],
-  [FileText, "Документы", "/documents"],
-  [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 const tabs = ["Обзор", "Платежи", "Долги", "Предоплаты", "Отчеты"] as const;
 const methods: PaymentMethod[] = ["Наличные", "Карта", "Перевод", "Расчетный счет"];
 const paymentTypes: PaymentType[] = ["Предоплата", "Доплата", "Полная оплата", "Возврат"];
@@ -37,7 +27,6 @@ export function FinanceDashboard() {
   const [method, setMethod] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
-  const [sidebar, setSidebar] = useState(false);
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState("");
   const [availableOrders, setAvailableOrders] = useState(mockOrders);
@@ -94,24 +83,18 @@ export function FinanceDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
-        <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Финансы" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}</nav>
-        <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div></div></div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по заказам, клиентам, телефонам..." /></div>
-          <button className="btn-primary hidden md:inline-flex" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Добавить платеж</button>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
-        </header>
-
-        <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Финансы</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Финансы</h1><p className="mt-1 text-slate-500">Оплаты, предоплаты и остатки по заказам</p></div><button className="btn-primary md:hidden" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Добавить платеж</button></div>
+    <>
+      <AppShell
+        active="Финансы"
+        title="Финансы"
+        subtitle="Оплаты, предоплаты и остатки по заказам"
+        eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Финансы</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по заказам, клиентам, телефонам..."
+        primaryAction={<button className="btn-primary hidden md:inline-flex" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Добавить платеж</button>}
+        mobileAction={<button className="btn-primary md:hidden" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Добавить платеж</button>}
+      >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[
             { label: "Общая сумма заказов", value: stats.totalOrdersAmount, Icon: WalletCards, color: "text-slate-950" },
@@ -131,12 +114,11 @@ export function FinanceDashboard() {
           {tab === "Долги" && <DebtsTable debts={filteredDebts} onRemind={() => notify("Напоминание подготовлено")} onAddPayment={() => setModal(true)} />}
           {tab === "Предоплаты" && <PrepaymentsTable payments={prepayments} />}
           {tab === "Отчеты" && <Reports stats={stats} payments={payments} />}
-        </main>
-      </div>
+      </AppShell>
 
       {modal && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-950">Добавить платеж</h2><p className="mt-1 text-sm text-slate-500">Платеж сохранится в localStorage и обновит связанные разделы.</p></div><button className="icon-button text-slate-400 hover:bg-slate-100" onClick={() => setModal(false)}><X className="h-5 w-5" /></button></div><div className="mt-6 grid gap-4 md:grid-cols-2"><label><span className="field-label">Заказ</span><select className="input" value={form.orderId} onChange={(event) => { const order = availableOrders.find((item) => item.id === event.target.value); const client = availableClients.find((item) => item.name === order?.client); setForm({ ...form, orderId: event.target.value, clientId: client?.id ?? form.clientId, amount: form.type === "Полная оплата" && order ? String(Math.max(0, order.amount - order.paid)) : form.amount }); }}>{availableOrders.map((order) => <option key={order.id}>{order.id}</option>)}</select></label><label><span className="field-label">Клиент</span><select className="input" value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })}>{availableClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label><label><span className="field-label">Сумма платежа</span><input className="input" inputMode="numeric" disabled={form.type === "Полная оплата"} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label><label><span className="field-label">Способ оплаты</span><select className="input" value={form.method} onChange={(event) => setForm({ ...form, method: event.target.value as PaymentMethod })}>{methods.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Тип платежа</span><select className="input" value={form.type} onChange={(event) => { const type = event.target.value as PaymentType; const order = availableOrders.find((item) => item.id === form.orderId); setForm({ ...form, type, amount: type === "Полная оплата" && order ? String(Math.max(0, order.amount - order.paid)) : "" }); }}>{paymentTypes.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Дата платежа</span><input className="input" type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label><label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" value={form.comment} onChange={(event) => setForm({ ...form, comment: event.target.value })} /></label></div><div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setModal(false)}>Отмена</button><button className="btn-primary" onClick={savePayment}>Сохранить платеж</button></div></div></div>}
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="h-5 w-5 text-emerald-400" />{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
-    </div>
+    </>
   );
 }
 

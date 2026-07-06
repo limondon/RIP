@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Новый заказ — ПАМЯТЬ CRM",
-  description: "Создание заказа в ритуальной мастерской",
+  title: "ПАМЯТЬ CRM",
+  description: "Рабочая CRM для памятников, заказов, производства, склада и финансов",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

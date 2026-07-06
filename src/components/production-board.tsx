@@ -1,26 +1,15 @@
 "use client";
 
 import {
-  AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, Clock3,
-  FileText, HandCoins, HardHat, LayoutDashboard, Menu, Package, PackageCheck, Plus, RotateCcw, Search, Settings, UsersRound, X, type LucideIcon,
+  AlertTriangle, CheckCircle2, ChevronDown, ClipboardList, Clock3,
+  HardHat, Plus, RotateCcw, Search, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { masters } from "@/data/mock-data";
 import { deadlineTone, daysUntil, getMockProductionOrders, mockProductionOrders, ProductionOrder, productionStages, ProductionStage } from "@/lib/production/mock-production";
 import { updateStoredProductionStage, updateStoredProductionTask } from "@/lib/storage";
-
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"],
-  [UsersRound, "Клиенты", "/clients"],
-  [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"],
-  [Package, "Склад", "/warehouse"],
-  [HandCoins, "Финансы", "/finance"],
-  [FileText, "Документы", "/documents"],
-  [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
@@ -80,7 +69,6 @@ export function ProductionBoard() {
   const [stage, setStage] = useState("");
   const [master, setMaster] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [sidebar, setSidebar] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -128,24 +116,18 @@ export function ProductionBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
-        <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Производство" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}{label === "Производство" && <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">{orders.length}</span>}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}</nav>
-        <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div></div></div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по заказам, клиентам, телефонам..." /></div>
-          <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
-        </header>
-
-        <main className="mx-auto max-w-[1800px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6"><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Производство</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Производство</h1><p className="mt-1 text-slate-500">Контроль этапов изготовления памятников</p></div>
+    <>
+      <AppShell
+        active="Производство"
+        title="Производство"
+        subtitle="Контроль этапов изготовления памятников"
+        eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Производство</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по заказам, клиентам, телефонам..."
+        primaryAction={<Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>}
+        badges={{ Производство: orders.length }}
+      >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {[
@@ -180,10 +162,9 @@ export function ProductionBoard() {
             <div className="border-b px-5 py-4"><h2 className="font-bold text-slate-900">Производственный реестр</h2><p className="mt-0.5 text-sm text-slate-500">Найдено: {filtered.length}</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[1400px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["№ заказа", "Клиент", "Тип изделия", "Материал", "Текущий этап", "Мастер", "Дата передачи", "Плановая готовность", "Осталось дней", "Комментарий", "Действия"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{filtered.map((order) => { const days = daysUntil(order.deadline); return <tr key={order.id} className="border-b last:border-0"><td className="px-4 py-4 font-semibold text-brand-700">{order.id}</td><td className="px-4 py-4 font-medium">{order.client}</td><td className="px-4 py-4 text-slate-600">{order.product}</td><td className="px-4 py-4 text-slate-600">{order.material}</td><td className="px-4 py-4"><select className="input h-9 min-w-40" value={order.stage} onChange={(event) => changeStage(order.id, event.target.value as ProductionStage)}>{productionStages.map((item) => <option key={item}>{item}</option>)}</select></td><td className="px-4 py-4"><select className="input h-9 min-w-44" value={order.masterId} onChange={(event) => updateProduction(order.id, { masterId: event.target.value }, "Мастер назначен")}>{masters.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select></td><td className="px-4 py-4">{order.transferDate}</td><td className="px-4 py-4"><input className="input h-9 min-w-36" type="date" value={order.deadline} onChange={(event) => updateProduction(order.id, { plannedReadyAt: event.target.value }, "Плановая готовность изменена")} /></td><td className={`px-4 py-4 font-bold ${days < 0 ? "text-red-600" : days <= 3 ? "text-orange-600" : "text-slate-700"}`}>{days < 0 ? `${Math.abs(days)} дн. просрочено` : `${days} дн.`}</td><td className="px-4 py-4"><input className="input h-9 min-w-64" value={order.comment} onChange={(event) => updateProduction(order.id, { comment: event.target.value }, "Комментарий производства обновлен")} /></td><td className="px-4 py-4"><Link href={`/orders/${order.id}`} className="btn-secondary h-9">Открыть заказ</Link></td></tr>; })}</tbody></table></div>
           </section>
-        </main>
-      </div>
+      </AppShell>
 
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="h-5 w-5 text-emerald-400" />{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
-    </div>
+    </>
   );
 }

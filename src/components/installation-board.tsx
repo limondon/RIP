@@ -1,26 +1,15 @@
 "use client";
 
 import {
-  AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, ClipboardList, FileText,
-  HandCoins, HardHat, LayoutDashboard, Menu, Package, PackageCheck, Plus, RotateCcw, Search, Settings, Truck, UsersRound, X, type LucideIcon,
+  AlertTriangle, CalendarDays, CheckCircle2, ChevronDown,
+  PackageCheck, Plus, RotateCcw, Search, Truck, X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { brigades } from "@/data/mock-data";
 import { getInstallationPeriod, getMockInstallations, InstallationJob, mockInstallations, installationStatuses, InstallationStatus, installationStatusStyles } from "@/lib/installation/mock-installations";
 import { updateStoredInstallationTask } from "@/lib/storage";
-
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"],
-  [UsersRound, "Клиенты", "/clients"],
-  [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"],
-  [Package, "Склад", "/warehouse"],
-  [HandCoins, "Финансы", "/finance"],
-  [FileText, "Документы", "/documents"],
-  [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 
 const periods = ["Сегодня", "Завтра", "Эта неделя", "Следующая неделя"] as const;
 
@@ -57,7 +46,6 @@ export function InstallationBoard() {
   const [crew, setCrew] = useState("");
   const [date, setDate] = useState("");
   const [view, setView] = useState<"list" | "calendar">("list");
-  const [sidebar, setSidebar] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -102,24 +90,18 @@ export function InstallationBoard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
-        <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Установка" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}{label === "Установка" && <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">{jobs.length}</span>}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}</nav>
-        <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div></div></div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по установкам, клиентам, кладбищам..." /></div>
-          <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
-        </header>
-
-        <main className="mx-auto max-w-[1800px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6"><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Установка</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Установка</h1><p className="mt-1 text-slate-500">Планирование и контроль выездов на кладбища</p></div>
+    <>
+      <AppShell
+        active="Установка"
+        title="Установка"
+        subtitle="Планирование и контроль выездов на кладбища"
+        eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Установка</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по установкам, клиентам, кладбищам..."
+        primaryAction={<Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>}
+        badges={{ Установка: jobs.length }}
+      >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[
             { label: "Всего установок", value: stats.total, Icon: PackageCheck, color: "bg-blue-50 text-blue-600" },
@@ -138,10 +120,9 @@ export function InstallationBoard() {
           {view === "calendar" && <div className="space-y-5">{periods.map((period) => { const periodJobs = filtered.filter((job) => getInstallationPeriod(job) === period); return <section key={period} className="card"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-slate-900">{period}</h2><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">{periodJobs.length}</span></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{periodJobs.map((job) => <CalendarCard key={job.id} job={job} onStatusChange={(id, nextStatus) => updateJob(id, { status: nextStatus }, "Статус установки изменён")} onDateChange={(id, nextDate) => updateJob(id, { date: nextDate }, "Дата установки изменена")} onTimeChange={(id, nextTime) => updateJob(id, { time: nextTime }, "Время установки изменено")} onBrigadeChange={(id, nextBrigadeId) => updateJob(id, { brigadeId: nextBrigadeId }, "Бригада назначена")} onCommentChange={(id, nextComment) => updateJob(id, { comment: nextComment }, "Комментарий установки обновлен")} />)}{!periodJobs.length && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-400">Нет выездов</div>}</div></section>; })}</div>}
 
           <section className="card mt-6"><div className="mb-5"><h2 className="text-lg font-bold text-slate-900">Бригады</h2><p className="mt-1 text-sm text-slate-500">Загрузка монтажных бригад</p></div><div className="grid gap-4 md:grid-cols-3">{brigades.map((brigade) => { const crewName = `${brigade.name} — ${brigade.members}`; const crewJobs = jobs.filter((job) => job.brigadeId === brigade.id); const nearest = crewJobs.sort((a, b) => a.date.localeCompare(b.date))[0]; const load = crewJobs.length >= 5 ? "Высокая загрузка" : crewJobs.length >= 3 ? "Нормальная загрузка" : "Свободна"; return <div key={brigade.id} className="rounded-xl border bg-slate-50 p-4"><h3 className="font-bold text-slate-900">{crewName}</h3><p className="mt-3 text-sm text-slate-500">Назначено: <b className="text-slate-800">{crewJobs.length}</b></p><p className="mt-1 text-sm text-slate-500">Ближайший выезд: <b className="text-slate-800">{nearest ? `${nearest.dateLabel}, ${nearest.time}` : "нет"}</b></p><p className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${load === "Высокая загрузка" ? "bg-orange-50 text-orange-700" : load === "Нормальная загрузка" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>{load}</p></div>; })}</div></section>
-        </main>
-      </div>
+      </AppShell>
 
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="h-5 w-5 text-emerald-400" />{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
-    </div>
+    </>
   );
 }

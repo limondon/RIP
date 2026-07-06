@@ -1,29 +1,17 @@
 "use client";
 
 import {
-  Bell, CalendarDays, CheckCircle2, ClipboardList, FileText, HandCoins, HardHat, LayoutDashboard,
-  Menu, Package, PackageCheck, Plus, Save, Search, Settings, ShieldCheck, Trash2, UploadCloud,
-  UsersRound, X, type LucideIcon,
+  CheckCircle2, Plus, Save, ShieldCheck, Trash2, UploadCloud, X,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { brigades as crmBrigades, masters as crmMasters, materials as crmMaterials, serviceCatalog, statuses as crmStatuses, users as crmUsers } from "@/data/mock-data";
 import { clearCrmStorage } from "@/lib/storage";
 
 type Tab = "Общие" | "Пользователи" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
 type ModalType = "user" | "material" | "service" | "master" | "crew" | "source" | "status" | null;
 
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"],
-  [UsersRound, "Клиенты", "/clients"],
-  [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"],
-  [Package, "Склад", "/warehouse"],
-  [HandCoins, "Финансы", "/finance"],
-  [FileText, "Документы", "/documents"],
-  [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 const tabs: Tab[] = ["Общие", "Пользователи", "Роли", "Материалы", "Услуги", "Статусы", "Мастера и бригады", "Источники клиентов", "Компания"];
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
@@ -93,7 +81,6 @@ function TextField({ label, value, onChange, type = "text" }: { label: string; v
 
 export function SettingsDashboard() {
   const [tab, setTab] = useState<Tab>("Общие");
-  const [sidebar, setSidebar] = useState(false);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState("");
   const [modal, setModal] = useState<ModalType>(null);
@@ -147,23 +134,16 @@ export function SettingsDashboard() {
   const filteredUsers = useMemo(() => users.filter((user) => !query || [user.name, user.phone, user.email, user.role].some((value) => value.toLowerCase().includes(query.toLowerCase()))), [query, users]);
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
-        <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Настройки" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link>)}</nav>
-        <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Администратор</div></div></div></div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по настройкам, пользователям, справочникам..." /></div>
-          {[CalendarDays, Bell].map((Icon, index) => <button key={index} className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 md:grid"><Icon className="h-5 w-5" /></button>)}
-        </header>
-
-        <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6"><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Настройки</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Настройки</h1><p className="mt-1 text-slate-500">Пользователи, справочники и параметры CRM</p></div>
+    <>
+      <AppShell
+        active="Настройки"
+        title="Настройки"
+        subtitle="Пользователи, справочники и параметры CRM"
+        eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Настройки</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по настройкам, пользователям, справочникам..."
+      >
           <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}</div></div>
 
           {tab === "Общие" && <section className="card"><h2 className="text-lg font-bold">Общие настройки CRM</h2><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[
@@ -185,8 +165,7 @@ export function SettingsDashboard() {
           {tab === "Источники клиентов" && <Directory title="Источники клиентов" button="Добавить источник" onAdd={() => openModal("source")} headers={["Источник", "Клиентов", "Заказов", "Сумма заказов", "Активен", "Действия"]}>{sources.map(([name, clients, orders, sum, active]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{clients}</Td><Td>{orders}</Td><Td>{money(Number(sum))}</Td><Td><Badge tone={active ? "green" : "gray"}>{active ? "Да" : "Нет"}</Badge></Td><Td><Actions /></Td></tr>)}</Directory>}
 
           {tab === "Компания" && <section className="card"><h2 className="text-lg font-bold">Реквизиты компании</h2><div className="mt-6 grid gap-4 md:grid-cols-2">{Object.entries({ name: "Название компании", inn: "ИНН", ogrn: "ОГРН", address: "Адрес", phone: "Телефон", email: "Email", site: "Сайт", director: "Руководитель", bank: "Банковские реквизиты" }).map(([key, label]) => <TextField key={key} label={label} value={company[key as keyof typeof company]} onChange={(value) => setCompany({ ...company, [key]: value })} />)}</div><label className="upload-zone mt-6"><UploadCloud className="h-7 w-7 text-brand-600" /><span><b>Загрузить логотип или печать</b><br /><span className="text-sm text-slate-500">PNG, JPG или PDF для будущих документов</span></span><input type="file" className="hidden" onChange={() => notify("Файл выбран")} /></label><button className="btn-primary mt-6" onClick={saveCompany}><Save className="h-4 w-4" />Сохранить реквизиты</button></section>}
-        </main>
-      </div>
+      </AppShell>
 
       {modal && <Modal title={modalTitle(modal)} onClose={() => setModal(null)} onSave={saveModal}>
         {modal === "user" && <><TextField label="Имя" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Телефон" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} /><TextField label="Email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} /><label><span className="field-label">Роль</span><select className="input" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}>{Object.keys(roleAccess).map((role) => <option key={role}>{role}</option>)}</select></label><label><span className="field-label">Статус</span><select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>Активен</option><option>Неактивен</option></select></label></>}
@@ -195,7 +174,7 @@ export function SettingsDashboard() {
         {["master", "crew", "source", "status"].includes(modal) && <><TextField label="Название / ФИО" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Описание" value={form.category} onChange={(value) => setForm({ ...form, category: value })} /><Check value={form.active} onChange={(value) => setForm({ ...form, active: value })}>Активен</Check></>}
       </Modal>}
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="h-5 w-5 text-emerald-400" />{toast}<button onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
-    </div>
+    </>
   );
 }
 

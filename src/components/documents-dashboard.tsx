@@ -1,21 +1,16 @@
 "use client";
 
 import {
-  Bell, CalendarDays, CheckCircle2, CircleHelp, ClipboardList, Download, Eye, FileCheck2, FileText,
-  HandCoins, HardHat, LayoutDashboard, Menu, Package, PackageCheck, Plus, Printer, RotateCcw, Search, Send, Settings, UsersRound, X, type LucideIcon,
+  Download, Eye, FileCheck2, Plus, Printer, RotateCcw, Search, Send, X,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { mockClients } from "@/lib/clients/mock-clients";
 import { createDocumentDraft, CrmDocument, documentStatusStyles, documentStatuses, documentTemplates, DocumentType, documentTypes, getDocumentContext, getMockDocuments, mockDocuments } from "@/lib/documents/mock-documents";
 import { mockOrders } from "@/lib/order/mock-orders";
 import { addStoredDocumentForOrder } from "@/lib/storage";
 
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"], [UsersRound, "Клиенты", "/clients"], [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"], [Package, "Склад", "/warehouse"], [HandCoins, "Финансы", "/finance"], [FileText, "Документы", "/documents"], [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 const tabs = ["Все документы", "Наряд-заказы", "Договоры", "Квитанции", "Акты", "Шаблоны"] as const;
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
@@ -76,7 +71,6 @@ export function DocumentsDashboard() {
   const [status, setStatus] = useState("");
   const [date, setDate] = useState("");
   const [modal, setModal] = useState(false);
-  const [sidebar, setSidebar] = useState(false);
   const [toast, setToast] = useState("");
   const [form, setForm] = useState({ type: "Наряд-заказ" as DocumentType, orderId: mockOrders[0].id, clientId: mockClients[0].id, date: "2026-06-16", comment: "" });
 
@@ -114,29 +108,30 @@ export function DocumentsDashboard() {
   const printDocument = () => window.print();
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`app-chrome fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
-        <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Документы" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}</nav>
-      </aside>
-      <div className="lg:pl-[252px]">
-        <header className="app-chrome sticky top-0 z-20 flex h-[70px] items-center gap-2 border-b bg-white/95 px-4 md:px-7"><button className="grid h-10 w-10 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button><div className="relative max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по документам, заказам, клиентам..." /></div><button className="btn-primary hidden md:inline-flex" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Сформировать документ</button><CalendarDays className="hidden h-5 w-5 text-slate-500 md:block" /><Bell className="hidden h-5 w-5 text-slate-500 md:block" /><CircleHelp className="hidden h-5 w-5 text-slate-500 md:block" /></header>
-        <main className="mx-auto max-w-[1800px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Документы</span></div><h1 className="text-3xl font-bold text-slate-950">Документы</h1><p className="mt-1 text-slate-500">Формирование наряд-заказов, договоров, квитанций и актов</p></div><button className="btn-primary md:hidden" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Сформировать документ</button></div>
+    <>
+      <AppShell
+        active="Документы"
+        title="Документы"
+        subtitle="Формирование наряд-заказов, договоров, квитанций и актов"
+        eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Документы</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по документам, заказам, клиентам..."
+        primaryAction={<button className="btn-primary hidden md:inline-flex" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Сформировать документ</button>}
+        mobileAction={<button className="btn-primary md:hidden" onClick={() => setModal(true)}><Plus className="h-4 w-4" />Сформировать документ</button>}
+      >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">{[["Всего документов", documents.length], ["Наряд-заказы", documents.filter((d) => d.type === "Наряд-заказ").length], ["Договоры", documents.filter((d) => d.type === "Договор").length], ["Квитанции", documents.filter((d) => d.type === "Квитанция").length], ["Акты", documents.filter((d) => d.type === "Акт выполненных работ").length], ["Ожидают подписи", documents.filter((d) => ["Сформирован", "Отправлен клиенту"].includes(d.status)).length]].map(([label, value]) => <section key={String(label)} className="card p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></section>)}</div>
           <section className="card mb-6 p-5"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_1fr_1fr_1fr_auto]"><label className="relative"><Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input className="input pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="№ заказа, клиент или телефон" /></label><select className="input" value={type} onChange={(event) => setType(event.target.value)}><option value="">Все типы</option>{documentTypes.map((item) => <option key={item}>{item}</option>)}</select><select className="input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Все статусы</option>{documentStatuses.map((item) => <option key={item}>{item}</option>)}</select><input className="input" type="date" value={date} onChange={(event) => setDate(event.target.value)} /><button className="btn-secondary" onClick={resetFilters}><RotateCcw className="h-4 w-4" />Сбросить фильтры</button></div></section>
           <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500"}`} onClick={() => setTab(item)}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-brand-600" />}</button>)}</div></div>
 
           {tab === "Шаблоны" ? <Templates onPreview={(docType) => { const doc = createDocumentDraft(docType, mockOrders[0].id, mockClients[0].id, "2026-06-16", "Предпросмотр шаблона"); setSelected(doc); }} onUse={(docType) => { setForm({ ...form, type: docType }); setModal(true); }} /> : <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]"><DocumentsTable documents={filtered} onSelect={setSelected} onPrint={printDocument} onStub={notify} /><section className="card document-preview"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">Предпросмотр документа</h2><button className="btn-primary" onClick={printDocument}><Printer className="h-4 w-4" />Печать документа</button></div><Paper document={selected} /></section></div>}
-        </main>
-      </div>
+      </AppShell>
 
       <div className="print-only"><Paper document={selected} /></div>
       {modal && <div className="app-chrome fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex justify-between"><div><h2 className="text-xl font-bold">Сформировать документ</h2><p className="text-sm text-slate-500">После формирования откроется предпросмотр.</p></div><button className="icon-button" onClick={() => setModal(false)}><X className="h-5 w-5" /></button></div><div className="mt-6 grid gap-4 md:grid-cols-2"><label><span className="field-label">Тип документа</span><select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as DocumentType })}>{documentTypes.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Заказ</span><select className="input" value={form.orderId} onChange={(e) => setForm({ ...form, orderId: e.target.value })}>{mockOrders.map((order) => <option key={order.id}>{order.id}</option>)}</select></label><label><span className="field-label">Клиент</span><select className="input" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })}>{mockClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label><label><span className="field-label">Дата</span><input className="input" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} /></label></div><div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setModal(false)}>Отмена</button><button className="btn-primary" onClick={createDocument}>Сформировать</button></div></div></div>}
       {toast && <div className="app-chrome fixed bottom-6 right-6 z-50 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl">{toast}</div>}
-    </div>
+    </>
   );
 }
 

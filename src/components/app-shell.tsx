@@ -65,9 +65,9 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
+      {sidebar && <button aria-label="Закрыть меню" className="app-chrome fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`app-chrome fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
         <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6">
           <div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div>
           <div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div>
@@ -92,7 +92,7 @@ export function AppShell({
       </aside>
 
       <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
+        <header className="app-chrome sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
           <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
           {hasSearch ? (
             <div className="relative min-w-0 max-w-xl flex-1">
@@ -123,7 +123,7 @@ export function AppShell({
         </main>
       </div>
 
-      {sidebar && <button aria-label="Закрыть меню" className="fixed right-4 top-4 z-50 grid h-10 w-10 place-items-center rounded-lg bg-white text-slate-700 shadow-lg lg:hidden" onClick={() => setSidebar(false)}><X className="h-5 w-5" /></button>}
+      {sidebar && <button aria-label="Закрыть меню" className="app-chrome fixed right-4 top-4 z-50 grid h-10 w-10 place-items-center rounded-lg bg-white text-slate-700 shadow-lg lg:hidden" onClick={() => setSidebar(false)}><X className="h-5 w-5" /></button>}
     </div>
   );
 }
