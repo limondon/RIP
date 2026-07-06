@@ -382,7 +382,7 @@ export function OperationsDashboard() {
         <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
           <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
-              <div className="mb-2 text-sm text-slate-500">Главная <span className="mx-2">/</span> <span className="text-slate-800">Рабочий пульт</span></div>
+              <div className="mb-2 text-sm text-slate-500"><span className="font-medium text-slate-800">Главная</span> <span className="mx-2">/</span> <span className="text-slate-800">Рабочий пульт</span></div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950">Рабочий пульт CRM</h1>
               <p className="mt-1 max-w-3xl text-slate-500">Заказы, деньги, производство и установки в одном экране. Данные берутся из localStorage и пересчитываются после изменений в связанных разделах.</p>
             </div>

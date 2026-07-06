@@ -33,6 +33,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getMockOrders, mockOrders, orderStatuses, statusStyles } from "@/lib/order/mock-orders";
 import { updateStoredOrderStatus } from "@/lib/storage";
 const nav = [
+  [LayoutDashboard, "Главная"],
   [ClipboardList, "Заказы"],
   [UsersRound, "Клиенты"],
   [HardHat, "Производство"],
@@ -99,12 +100,16 @@ export function OrdersList() {
       {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
 
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/orders" className="flex h-[82px] items-center border-b border-white/10 px-6">
+        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6">
           <div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div>
           <div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div>
         </Link>
         <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label]) => label === "Заказы" ? (
+          {nav.map(([Icon, label]) => label === "Главная" ? (
+            <Link key={label} href="/" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+              <Icon className="h-[18px] w-[18px]" />{label}
+            </Link>
+          ) : label === "Заказы" ? (
             <Link key={label} href="/orders" className="flex h-11 w-full items-center gap-3 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-lg shadow-blue-950/20">
               <Icon className="h-[18px] w-[18px]" />{label}<span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">{orders.length}</span>
             </Link>
@@ -168,7 +173,7 @@ export function OrdersList() {
         <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
           <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <div className="mb-2 text-sm text-slate-500">Главная <span className="mx-2">/</span> <span className="text-slate-800">Заказы</span></div>
+              <div className="mb-2 text-sm text-slate-500">Раздел CRM: <span className="font-medium text-slate-800">Заказы</span></div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950">Заказы</h1>
               <p className="mt-1 text-slate-500">Все заказы на изготовление и установку памятников</p>
             </div>

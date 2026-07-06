@@ -14,6 +14,7 @@ type Tab = "Общие" | "Пользователи" | "Роли" | "Матер�
 type ModalType = "user" | "material" | "service" | "master" | "crew" | "source" | "status" | null;
 
 const nav = [
+  [LayoutDashboard, "Главная", "/"],
   [ClipboardList, "Заказы", "/orders"],
   [UsersRound, "Клиенты", "/clients"],
   [HardHat, "Производство", "/production"],
@@ -149,7 +150,7 @@ export function SettingsDashboard() {
     <div className="min-h-screen bg-[#f4f6f9]">
       {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/orders" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
+        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
         <nav className="flex-1 space-y-1 p-4">{nav.map(([Icon, label, href]) => <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Настройки" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link>)}</nav>
         <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Администратор</div></div></div></div>
       </aside>
@@ -162,7 +163,7 @@ export function SettingsDashboard() {
         </header>
 
         <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6"><div className="mb-2 text-sm text-slate-500">Главная <span className="mx-2">/</span> <span className="text-slate-800">Настройки</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Настройки</h1><p className="mt-1 text-slate-500">Пользователи, справочники и параметры CRM</p></div>
+          <div className="mb-6"><div className="mb-2 text-sm text-slate-500"><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Настройки</span></div><h1 className="text-3xl font-bold tracking-tight text-slate-950">Настройки</h1><p className="mt-1 text-slate-500">Пользователи, справочники и параметры CRM</p></div>
           <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}</div></div>
 
           {tab === "Общие" && <section className="card"><h2 className="text-lg font-bold">Общие настройки CRM</h2><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[
