@@ -2,47 +2,24 @@
 
 import {
   AlertTriangle,
-  Bell,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
-  CircleHelp,
   ClipboardList,
   Clock3,
   Eye,
-  FileText,
-  HandCoins,
-  HardHat,
-  LayoutDashboard,
-  Menu,
-  Package,
-  PackageCheck,
   Pencil,
   Plus,
   RotateCcw,
   Search,
-  Settings,
   TrendingUp,
-  UsersRound,
   WalletCards,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { getMockOrders, mockOrders, orderStatuses, statusStyles } from "@/lib/order/mock-orders";
 import { updateStoredOrderStatus } from "@/lib/storage";
-const nav = [
-  [LayoutDashboard, "Главная"],
-  [ClipboardList, "Заказы"],
-  [UsersRound, "Клиенты"],
-  [HardHat, "Производство"],
-  [PackageCheck, "Установка"],
-  [Package, "Склад"],
-  [HandCoins, "Финансы"],
-  [FileText, "Документы"],
-  [Settings, "Настройки"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string]>;
 
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
@@ -52,7 +29,6 @@ export function OrdersList() {
   const [status, setStatus] = useState("");
   const [material, setMaterial] = useState("");
   const [date, setDate] = useState("");
-  const [sidebar, setSidebar] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -96,89 +72,19 @@ export function OrdersList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6">
-          <div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div>
-          <div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div>
-        </Link>
-        <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label]) => label === "Главная" ? (
-            <Link key={label} href="/" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Заказы" ? (
-            <Link key={label} href="/orders" className="flex h-11 w-full items-center gap-3 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-lg shadow-blue-950/20">
-              <Icon className="h-[18px] w-[18px]" />{label}<span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">{orders.length}</span>
-            </Link>
-          ) : label === "Клиенты" ? (
-            <Link key={label} href="/clients" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Производство" ? (
-            <Link key={label} href="/production" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Установка" ? (
-            <Link key={label} href="/installation" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Склад" ? (
-            <Link key={label} href="/warehouse" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Финансы" ? (
-            <Link key={label} href="/finance" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Документы" ? (
-            <Link key={label} href="/documents" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Настройки" ? (
-            <Link key={label} href="/settings" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : (
-            <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </button>
-          ))}
-        </nav>
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div>
-            <div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div>
-          </div>
-        </div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-            <input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по заказам, клиентам, телефонам..." />
-          </div>
-          <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => (
-            <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}>
-              <Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}
-            </button>
-          ))}
-        </header>
-
-        <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <div className="mb-2 text-sm text-slate-500">Раздел CRM: <span className="font-medium text-slate-800">Заказы</span></div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Заказы</h1>
-              <p className="mt-1 text-slate-500">Все заказы на изготовление и установку памятников</p>
-            </div>
-            <Link href="/orders/new" className="btn-primary sm:hidden"><Plus className="h-4 w-4" />Создать заказ</Link>
-          </div>
+    <>
+      <AppShell
+        active="Заказы"
+        title="Заказы"
+        subtitle="Все заказы на изготовление и установку памятников"
+        eyebrow={<>Раздел CRM: <span className="font-medium text-slate-800">Заказы</span></>}
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Поиск по заказам, клиентам, телефонам..."
+        primaryAction={<Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>}
+        mobileAction={<Link href="/orders/new" className="btn-primary sm:hidden"><Plus className="h-4 w-4" />Создать заказ</Link>}
+        badges={{ Заказы: orders.length }}
+      >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
@@ -275,8 +181,7 @@ export function OrdersList() {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>Данные на странице демонстрационные. После подключения базы здесь будут отображаться реальные заказы мастерской.</p>
           </div>
-        </main>
-      </div>
+      </AppShell>
 
       {toast && (
         <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl">
@@ -284,6 +189,6 @@ export function OrdersList() {
           <button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button>
         </div>
       )}
-    </div>
+    </>
   );
 }

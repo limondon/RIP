@@ -3,30 +3,23 @@
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
   FileText,
-  HandCoins,
   HardHat,
-  LayoutDashboard,
-  Menu,
-  Package,
   PackageCheck,
   Plus,
   Receipt,
   Search,
-  Settings,
   ShieldAlert,
   TrendingUp,
-  UsersRound,
   WalletCards,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { brigades, statuses } from "@/data/mock-data";
 import {
   getStoredClients,
@@ -38,18 +31,6 @@ import {
   getStoredProductionTasks,
 } from "@/lib/storage";
 import type { Client, Document, InstallationTask, InventoryItem, Order, OrderStatus, Payment, ProductionTask } from "@/types/crm";
-
-const nav = [
-  [LayoutDashboard, "Главная", "/"],
-  [ClipboardList, "Заказы", "/orders"],
-  [UsersRound, "Клиенты", "/clients"],
-  [HardHat, "Производство", "/production"],
-  [PackageCheck, "Установка", "/installation"],
-  [Package, "Склад", "/warehouse"],
-  [HandCoins, "Финансы", "/finance"],
-  [FileText, "Документы", "/documents"],
-  [Settings, "Настройки", "/settings"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 
 const quickActions = [
   [Plus, "Новый заказ", "/orders/new"],
@@ -297,7 +278,6 @@ export function OperationsDashboard() {
     documents: [],
     inventory: [],
   }));
-  const [sidebar, setSidebar] = useState(false);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -340,58 +320,18 @@ export function OperationsDashboard() {
     : activeOrders.slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9]">
-      {sidebar && <button aria-label="Закрыть меню" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setSidebar(false)} />}
-
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6">
-          <div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div>
-          <div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div>
-        </Link>
-        <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label, href]) => (
-            <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${href === "/" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
-              <Icon className="h-[18px] w-[18px]" />{label}
-              {label === "Главная" && attention.length > 0 && <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">{attention.length}</span>}
-            </Link>
-          ))}
-        </nav>
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div>
-            <div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div>
-          </div>
-        </div>
-      </aside>
-
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
-          <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
-          <div className="relative min-w-0 max-w-xl flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-            <input className="input bg-slate-50 pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Быстрый поиск заказа, клиента или телефона..." />
-          </div>
-          <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Новый заказ</Link>
-          {[CalendarDays, Bell].map((Icon, index) => (
-            <button key={index} aria-label={["Календарь", "Уведомления"][index]} className="relative hidden h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 sm:grid">
-              <Icon className="h-5 w-5" />{index === 1 && attention.length > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}
-            </button>
-          ))}
-        </header>
-
-        <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
-          <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div>
-              <div className="mb-2 text-sm text-slate-500"><span className="font-medium text-slate-800">Главная</span> <span className="mx-2">/</span> <span className="text-slate-800">Рабочий пульт</span></div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-950">Рабочий пульт CRM</h1>
-              <p className="mt-1 max-w-3xl text-slate-500">Заказы, деньги, производство и установки в одном экране. Данные берутся из localStorage и пересчитываются после изменений в связанных разделах.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/orders/new" className="btn-primary md:hidden"><Plus className="h-4 w-4" />Новый заказ</Link>
-              <Link href="/finance" className="btn-secondary"><WalletCards className="h-4 w-4" />Финансы</Link>
-              <Link href="/production" className="btn-secondary"><HardHat className="h-4 w-4" />Производство</Link>
-            </div>
-          </div>
+    <AppShell
+      active="Главная"
+      title="Рабочий пульт CRM"
+      subtitle="Заказы, деньги, производство и установки в одном экране. Данные берутся из localStorage и пересчитываются после изменений в связанных разделах."
+      eyebrow={<><span className="font-medium text-slate-800">Главная</span> <span className="mx-2">/</span> <span className="text-slate-800">Рабочий пульт</span></>}
+      searchValue={query}
+      onSearchChange={setQuery}
+      searchPlaceholder="Быстрый поиск заказа, клиента или телефона..."
+      primaryAction={<Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Новый заказ</Link>}
+      mobileAction={<div className="flex flex-wrap gap-2"><Link href="/orders/new" className="btn-primary md:hidden"><Plus className="h-4 w-4" />Новый заказ</Link><Link href="/finance" className="btn-secondary"><WalletCards className="h-4 w-4" />Финансы</Link><Link href="/production" className="btn-secondary"><HardHat className="h-4 w-4" />Производство</Link></div>}
+      badges={{ Главная: attention.length || undefined }}
+    >
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {[
@@ -570,10 +510,6 @@ export function OperationsDashboard() {
               </div>
             </section>
           </div>
-        </main>
-      </div>
-
-      {sidebar && <button aria-label="Закрыть меню" className="fixed right-4 top-4 z-50 grid h-10 w-10 place-items-center rounded-lg bg-white text-slate-700 shadow-lg lg:hidden" onClick={() => setSidebar(false)}><X className="h-5 w-5" /></button>}
-    </div>
+    </AppShell>
   );
 }
