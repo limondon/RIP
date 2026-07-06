@@ -179,13 +179,13 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
     notify("План установки обновлён");
   };
 
-  const openPaymentModal = (type: PaymentType = "Доплата") => {
+  const openPaymentModal = (type: PaymentType = "Доплата", method: PaymentMethod = "Перевод") => {
     const found = refreshOrder();
     const nextRemaining = found ? Math.max(0, found.amount - found.paid) : 0;
     setPaymentForm({
       type,
       amount: type === "Полная оплата" ? String(nextRemaining) : "",
-      method: "Наличные",
+      method,
       date: new Date().toISOString().slice(0, 10),
       comment: "",
     });
@@ -256,6 +256,7 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
   }
 
   const remaining = Math.max(0, order.amount - order.paid);
+  const paymentProgress = order.amount ? Math.min(100, Math.round((order.paid / order.amount) * 100)) : 0;
   const services = [
     ["Доставка", 3000, true], ["Установка", 8000, true], ["Демонтаж", 5000, true], ["Заливка основания", 7000, true],
     ["Ограда", 0, false], ["Укладка плитки", 0, false], ["Уборка места", 0, false], ["Дополнительные услуги", 0, false],
@@ -352,7 +353,8 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
         <header className="sticky top-0 z-20 flex h-[70px] min-w-0 items-center gap-2 border-b bg-white/95 px-4 backdrop-blur md:gap-3 md:px-7">
           <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
           <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" placeholder="Поиск по заказам, клиентам, телефонам..." /></div>
-          <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
+          <button className="btn-primary hidden md:inline-flex" onClick={() => openPaymentModal("Доплата", "Перевод")}><HandCoins className="h-4 w-4" />Принять оплату</button>
+          <Link href="/orders/new" className="btn-secondary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
           {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
         </header>
 
@@ -385,6 +387,26 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
             </div>
           </section>
 
+          <section className="mb-6 rounded-2xl border border-emerald-100 bg-white p-5 shadow-card">
+            <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Касса заказа</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950">{remaining > 0 ? `Осталось принять ${money(remaining)}` : "Заказ полностью оплачен"}</h2>
+                <p className="mt-1 text-sm text-slate-500">Если клиент перевел деньги, нажми “Принять оплату”, введи сумму и способ оплаты.</p>
+              </div>
+              <div>
+                <div className="mb-2 flex justify-between text-sm"><span className="text-slate-500">Оплачено</span><b className="text-slate-900">{paymentProgress}%</b></div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${paymentProgress}%` }} /></div>
+                <div className="mt-2 flex justify-between text-xs text-slate-500"><span>{money(order.paid)}</span><span>{money(order.amount)}</span></div>
+              </div>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <button className="btn-primary" onClick={() => openPaymentModal("Доплата", "Перевод")}><HandCoins className="h-4 w-4" />Принять оплату</button>
+                {remaining > 0 && <button className="btn-secondary" onClick={() => openPaymentModal("Полная оплата", "Перевод")}>Оплатить остаток</button>}
+                <button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50" onClick={() => openPaymentModal("Возврат", order.paymentMethod as PaymentMethod)}>Возврат</button>
+              </div>
+            </div>
+          </section>
+
           <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card">
             <div className="flex min-w-max">
               {tabs.map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`relative px-4 py-4 text-sm font-semibold transition ${activeTab === tab ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{tab}{activeTab === tab && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}
@@ -411,9 +433,9 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{[["Стоимость изделия", order.productPrice, "text-slate-950"], ["Стоимость оформления", order.decorationPrice, "text-slate-950"], ["Стоимость услуг", order.servicesPrice, "text-slate-950"], ["Скидка", order.discount, "text-red-600"], ["Итоговая сумма", order.amount, "text-emerald-600"], ["Предоплата", order.paid, "text-brand-700"], ["Остаток", remaining, "text-orange-600"]].map(([label, value, color]) => <div key={String(label)} className="card p-5"><p className="text-sm text-slate-500">{label}</p><p className={`mt-2 text-2xl font-bold ${color}`}>{money(Number(value))}</p></div>)}</div>
             <Section title="Управление оплатой" subtitle="Платежи сохраняются в финансах и сразу пересчитывают остаток">
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <button className="btn-secondary justify-center" onClick={() => openPaymentModal("Доплата")}>Добавить доплату</button>
-                <button className="btn-secondary justify-center" onClick={() => openPaymentModal("Возврат")}>Оформить возврат</button>
-                <button className="btn-primary justify-center" onClick={() => openPaymentModal("Полная оплата")}>Полная оплата</button>
+                <button className="btn-primary justify-center" onClick={() => openPaymentModal("Доплата", "Перевод")}><HandCoins className="h-4 w-4" />Принять оплату</button>
+                <button className="btn-secondary justify-center" onClick={() => openPaymentModal("Возврат", order.paymentMethod as PaymentMethod)}>Оформить возврат</button>
+                <button className="btn-secondary justify-center" onClick={() => openPaymentModal("Полная оплата", "Перевод")}>Оплатить остаток</button>
                 <Link href="/finance" className="btn-secondary justify-center"><HandCoins className="h-4 w-4" />Открыть финансы</Link>
               </div>
             </Section>
@@ -488,17 +510,22 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
       {paymentModal && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm">
         <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
           <div className="flex items-start justify-between gap-4">
-            <div><h2 className="text-xl font-bold text-slate-950">Добавить платеж</h2><p className="mt-1 text-sm text-slate-500">Заказ {order.id}, остаток {money(remaining)}</p></div>
+            <div><h2 className="text-xl font-bold text-slate-950">{paymentForm.type === "Возврат" ? "Оформить возврат" : "Принять оплату"}</h2><p className="mt-1 text-sm text-slate-500">Заказ {order.id}, остаток {money(remaining)}</p></div>
             <button className="icon-button text-slate-400 hover:bg-slate-100" onClick={() => setPaymentModal(false)}><X className="h-5 w-5" /></button>
+          </div>
+          <div className="mt-6 grid gap-2 sm:grid-cols-3">
+            <button className={`btn-secondary justify-center ${paymentForm.type === "Доплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => setPaymentForm((form) => ({ ...form, type: "Доплата", amount: "", method: "Перевод" }))}>Клиент перевел</button>
+            <button className={`btn-secondary justify-center ${paymentForm.type === "Полная оплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => setPaymentForm((form) => ({ ...form, type: "Полная оплата", amount: String(remaining), method: "Перевод" }))}>Оплатить остаток</button>
+            <button className={`btn-secondary justify-center ${paymentForm.type === "Возврат" ? "border-red-200 bg-red-50 text-red-700" : ""}`} onClick={() => setPaymentForm((form) => ({ ...form, type: "Возврат", amount: "", method: order.paymentMethod as PaymentMethod }))}>Вернуть деньги</button>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <label><span className="field-label">Тип платежа</span><select className="input" value={paymentForm.type} onChange={(event) => { const type = event.target.value as PaymentType; setPaymentForm((form) => ({ ...form, type, amount: type === "Полная оплата" ? String(remaining) : "" })); }}>{paymentTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label><span className="field-label">Сумма</span><input className="input" inputMode="numeric" value={paymentForm.amount} disabled={paymentForm.type === "Полная оплата"} onChange={(event) => setPaymentForm((form) => ({ ...form, amount: event.target.value }))} /></label>
+            <label><span className="field-label">Сумма</span><input className="input" inputMode="numeric" placeholder={paymentForm.type === "Возврат" ? "Сколько вернуть" : "Сколько пришло"} value={paymentForm.amount} disabled={paymentForm.type === "Полная оплата"} onChange={(event) => setPaymentForm((form) => ({ ...form, amount: event.target.value }))} /></label>
             <label><span className="field-label">Способ оплаты</span><select className="input" value={paymentForm.method} onChange={(event) => setPaymentForm((form) => ({ ...form, method: event.target.value as PaymentMethod }))}>{paymentMethods.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label><span className="field-label">Дата</span><input className="input" type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((form) => ({ ...form, date: event.target.value }))} /></label>
             <label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" value={paymentForm.comment} onChange={(event) => setPaymentForm((form) => ({ ...form, comment: event.target.value }))} placeholder="Например: доплата после согласования макета" /></label>
           </div>
-          <div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setPaymentModal(false)}>Отмена</button><button className="btn-primary" onClick={savePayment}>Сохранить платеж</button></div>
+          <div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setPaymentModal(false)}>Отмена</button><button className="btn-primary" onClick={savePayment}>{paymentForm.type === "Возврат" ? "Сохранить возврат" : "Принять деньги"}</button></div>
         </div>
       </div>}
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-500"><Check className="h-4 w-4" /></span>{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
