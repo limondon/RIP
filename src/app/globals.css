@@ -4,7 +4,7 @@
 
 @layer base {
   * { @apply border-slate-200; }
-  body { @apply bg-[#f4f6f9] text-slate-800 antialiased; }
+  body { @apply overflow-x-hidden bg-[#f4f6f9] text-slate-800 antialiased; }
   input, select, textarea { @apply outline-none; }
 }
 @layer components {
@@ -15,4 +15,16 @@
   .btn { @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition focus:outline-none focus:ring-4; }
   .btn-primary { @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 focus:ring-brand-100; }
   .btn-secondary { @apply btn border bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-100; }
+  .upload-zone { @apply flex min-h-28 cursor-pointer items-center justify-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 text-center transition hover:border-brand-400 hover:bg-brand-50; }
+  .file-tile { @apply flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-slate-50 p-4 text-center transition hover:border-brand-400 hover:bg-brand-50; }
+  .icon-button { @apply grid h-8 w-8 place-items-center rounded-lg transition; }
+  .print-only { display: none; }
+}
+
+@media print {
+  body { background: white !important; }
+  .app-chrome, .document-preview { display: none !important; }
+  .print-only { display: block !important; }
+  .print-document { border: 0 !important; box-shadow: none !important; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm; }
+  @page { size: A4; margin: 0; }
 }

@@ -1,5 +1,8 @@
+.agents/
+.git.broken*/
 node_modules/
 .next/
+.vercel/
 out/
 *.tsbuildinfo
 .env*

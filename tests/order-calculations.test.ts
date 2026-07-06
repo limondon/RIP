@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateItemTotal, calculateOrderTotals, calculateServiceTotal, toNonNegativeNumber, updateOrderItem } from "../src/lib/order/calculations";
+import {
+  calculateItemTotal,
+  calculateOrderTotals,
+  calculateServiceTotal,
+  toNonNegativeNumber,
+  updateOrderItem,
+} from "../src/lib/order/calculations";
 import { createInitialOrderData } from "../src/lib/order/defaults";
 import { validateOrder } from "../src/lib/order/validation";
 
@@ -11,7 +17,7 @@ test("считает только выбранные услуги", () => {
 
 test("считает итог и остаток заказа", () => {
   const totals = calculateOrderTotals(createInitialOrderData());
-  assert.deepEqual(totals, { serviceTotal: 23000, total: 112500, paid: 50000, remaining: 62500 });
+  assert.deepEqual(totals, { serviceTotal: 23000, total: 114000, paid: 0, remaining: 114000 });
 });
 
 test("не допускает отрицательные денежные значения", () => {
@@ -26,15 +32,12 @@ test("пересчитывает сумму строки комплектаци�
 
 test("валидирует обязательные поля и превышение предоплаты", () => {
   const order = createInitialOrderData();
-  order.customer.fullName = "";
-  order.customer.phone = "";
-  order.product.monumentType = "";
-  order.product.material = "";
   order.payment.prepayment = 999999;
 
   assert.deepEqual(validateOrder(order), {
     fullName: "Укажите ФИО заказчика",
     phone: "Укажите номер телефона",
+    deceasedFullName: "Укажите ФИО захороненного",
     monumentType: "Выберите тип памятника",
     material: "Выберите материал",
     prepayment: "Предоплата не может быть больше итоговой суммы",

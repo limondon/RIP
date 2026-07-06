@@ -1,0 +1,6 @@
+.agents
+.git.broken-empty-before-init
+.next
+node_modules
+tsconfig.tsbuildinfo
+npm-debug.log*

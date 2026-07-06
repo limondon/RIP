@@ -5,6 +5,6 @@ export const metadata: Metadata = {
   title: "Новый заказ — ПАМЯТЬ CRM",
 };
 
-export default function NewOrderPage() {
-  return <OrderForm />;
+export default function NewOrderPage({ searchParams }: { searchParams?: { edit?: string } }) {
+  return <OrderForm editOrderId={searchParams?.edit ?? null} />;
 }
