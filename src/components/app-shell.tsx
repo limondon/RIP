@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useState } from "react";
+import { StaffMenu } from "@/components/staff-menu";
 
 const navItems = [
   [LayoutDashboard, "Главная", "/"],
@@ -84,10 +85,7 @@ export function AppShell({
           })}
         </nav>
         <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div>
-            <div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div>
-          </div>
+          <StaffMenu />
         </div>
       </aside>
 

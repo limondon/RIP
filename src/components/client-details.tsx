@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
+import { StaffMenu } from "@/components/staff-menu";
+import { getStoredStaffMember, type StaffMember } from "@/lib/auth/staff";
 import type { MockClient } from "@/lib/clients/mock-clients";
 import { getClientById, getClientTotals } from "@/lib/clients/mock-clients";
 import { statusStyles } from "@/lib/order/mock-orders";
@@ -49,6 +51,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
   const [sidebar, setSidebar] = useState(false);
   const [note, setNote] = useState("");
   const [notes, setNotes] = useState(["Клиент просит присылать документы в мессенджер.", "Перед установкой обязательно согласовать время выезда."]);
+  const [staff, setStaff] = useState<StaffMember | null>(null);
   const [toast, setToast] = useState("");
 
   const notify = (message: string) => {
@@ -60,6 +63,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
     const id = window.location.pathname.split("/").pop();
     const found = id ? getClientById(id) : null;
     if (found) setCurrentClient(found);
+    setStaff(getStoredStaffMember());
   }, []);
 
   client = currentClient;
@@ -95,7 +99,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
         <nav className="flex-1 space-y-1 p-4">
           {nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Клиенты" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}
         </nav>
-        <div className="border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-slate-700 text-sm font-semibold">ТИ</div><div><div className="text-sm font-semibold">Тимофеев И.</div><div className="text-xs text-slate-400">Менеджер</div></div></div></div>
+        <div className="border-t border-white/10 p-4"><StaffMenu /></div>
       </aside>
 
       <div className="lg:pl-[252px]">
@@ -129,7 +133,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
 
           {activeTab === "Платежи" && <Section title="История платежей клиента"><div className="overflow-x-auto"><table className="w-full min-w-[860px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["Дата", "Заказ", "Тип", "Сумма", "Способ оплаты", "Комментарий"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{client.payments.map((payment) => <tr key={payment.id} className="border-b last:border-0"><td className="px-4 py-4">{payment.date}</td><td className="px-4 py-4"><Link href={`/orders/${payment.orderId}`} className="font-semibold text-brand-700">{payment.orderId}</Link></td><td className="px-4 py-4">{payment.type}</td><td className={`px-4 py-4 font-bold ${payment.type === "Возврат" ? "text-red-600" : "text-emerald-600"}`}>{money(payment.amount)}</td><td className="px-4 py-4">{payment.method}</td><td className="px-4 py-4 text-slate-500">{payment.comment}</td></tr>)}{!client.payments.length && <tr><td className="px-4 py-8 text-center text-slate-400" colSpan={6}>Платежей пока нет</td></tr>}</tbody></table></div></Section>}
 
-          {activeTab === "Комментарии" && <div className="grid gap-5 xl:grid-cols-[1fr_420px]"><Section title="Заметки по клиенту">{notes.map((item, index) => <div key={`${item}-${index}`} className="mb-3 rounded-xl border bg-slate-50 p-4 last:mb-0"><p className="text-sm text-slate-700">{item}</p><p className="mt-2 text-xs text-slate-400">Сегодня, менеджер Тимофеев И.</p></div>)}</Section><Section title="Добавить комментарий"><textarea className="textarea" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Введите новую заметку по клиенту..." /><button className="btn-primary mt-4 w-full" onClick={addNote}><Send className="h-4 w-4" />Добавить комментарий</button></Section></div>}
+          {activeTab === "Комментарии" && <div className="grid gap-5 xl:grid-cols-[1fr_420px]"><Section title="Заметки по клиенту">{notes.map((item, index) => <div key={`${item}-${index}`} className="mb-3 rounded-xl border bg-slate-50 p-4 last:mb-0"><p className="text-sm text-slate-700">{item}</p><p className="mt-2 text-xs text-slate-400">Сегодня, {staff?.name ?? "сотрудник CRM"}</p></div>)}</Section><Section title="Добавить комментарий"><textarea className="textarea" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Введите новую заметку по клиенту..." /><button className="btn-primary mt-4 w-full" onClick={addNote}><Send className="h-4 w-4" />Добавить комментарий</button></Section></div>}
 
           {activeTab === "Файлы" && <Section title="Файлы клиента" subtitle="Заглушки для будущего хранилища документов"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["Договоры", "2 файла", FileText], ["Документы", "Паспортные данные", FileText], ["Фото", "5 изображений", FileImage], ["Чеки", "3 платежа", WalletCards]].map(([label, note, Icon]) => <div key={String(label)} className="rounded-xl border bg-slate-50 p-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><Icon className="h-5 w-5" /></span><p className="mt-4 text-sm font-semibold text-slate-800">{label as string}</p><p className="mt-1 text-xs text-slate-500">{note as string}</p></div>)}</div></Section>}
         </main>

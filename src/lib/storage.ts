@@ -1,5 +1,6 @@
 import { clients, documents, installationTasks, inventoryItems, orders, payments, productionTasks } from "@/data/mock-data";
 import { brigades } from "@/data/mock-data";
+import { getStoredStaffMember } from "@/lib/auth/staff";
 import type { Client, CrmEvent, CrmEventType, Document, DocumentType, InstallationTask, InventoryItem, InventoryMovement, InventoryMovementType, InventoryReservation, Order, OrderStatus, Payment, PaymentMethod, PaymentType, ProductionStage, ProductionTask } from "@/types/crm";
 
 const ORDERS_KEY = "pamyat-crm-orders";
@@ -81,7 +82,7 @@ export function recordCrmEvent(input: {
     type: input.type,
     title: input.title,
     detail: input.detail,
-    actor: input.actor ?? "Тимофеев И.",
+    actor: input.actor ?? getStoredStaffMember()?.name ?? "Сотрудник CRM",
     createdAt: new Date().toISOString(),
   };
   saveStoredEvents([event, ...getStoredEvents()]);
