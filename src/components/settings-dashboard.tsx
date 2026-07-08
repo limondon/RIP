@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  CheckCircle2, Plus, Save, ShieldCheck, Trash2, UploadCloud, X,
+  AlertTriangle, CheckCircle2, Plus, Save, ShieldCheck, Trash2, UploadCloud, X,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
@@ -9,15 +9,14 @@ import { AppShell } from "@/components/app-shell";
 import { brigades as crmBrigades, masters as crmMasters, materials as crmMaterials, serviceCatalog, statuses as crmStatuses, users as crmUsers } from "@/data/mock-data";
 import { clearCrmStorage } from "@/lib/storage";
 
-type Tab = "Общие" | "Пользователи" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
+type Tab = "Общие" | "Сотрудники" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
 type ModalType = "user" | "material" | "service" | "master" | "crew" | "source" | "status" | null;
+type StaffAdminItem = { id: string; name: string; phone: string; email: string; status: "Активен" | "Неактивен"; lastLogin: string; source: "demo" | "supabase" };
 
-const tabs: Tab[] = ["Общие", "Пользователи", "Роли", "Материалы", "Услуги", "Статусы", "Мастера и бригады", "Источники клиентов", "Компания"];
+const tabs: Tab[] = ["Общие", "Сотрудники", "Роли", "Материалы", "Услуги", "Статусы", "Мастера и бригады", "Источники клиентов", "Компания"];
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
-const initialUsers = [
-  ...crmUsers.map((user, index) => ({ ...user, lastLogin: ["сегодня, 09:20", "вчера, 18:05", "15.06.2026", "14.06.2026", "01.06.2026"][index] ?? "не входил" })),
-];
+const initialUsers: StaffAdminItem[] = crmUsers.map((user, index) => ({ id: user.id, name: user.name, phone: user.phone, email: user.email, status: user.status, lastLogin: ["сегодня, 09:20", "вчера, 18:05", "15.06.2026", "14.06.2026", "01.06.2026"][index] ?? "не входил", source: "demo" }));
 const initialMaterials = crmMaterials.map(({ name, color, type, price, active }) => ({ name, color, type, price, active }));
 const initialServices = serviceCatalog.map(({ name, category, price, active }) => ({ name, category, price, active }));
 const roleAccess = {
@@ -85,6 +84,7 @@ export function SettingsDashboard() {
   const [toast, setToast] = useState("");
   const [modal, setModal] = useState<ModalType>(null);
   const [users, setUsers] = useState(initialUsers);
+  const [staffConnection, setStaffConnection] = useState<"checking" | "demo" | "connected">("checking");
   const [materials, setMaterials] = useState(initialMaterials);
   const [services, setServices] = useState(initialServices);
   const [settings, setSettings] = useState({
@@ -96,12 +96,24 @@ export function SettingsDashboard() {
     phone: "+7 (999) 123-45-67", email: "info@pamyat-crm.ru", site: "pamyat-crm.ru", director: "Тимофеев Игорь Сергеевич",
     bank: "р/с 40702810000000000000, БИК 044525000, АО Банк",
   });
-  const [form, setForm] = useState({ name: "", phone: "", email: "", role: "Менеджер", status: "Активен", color: "", type: "", price: "", category: "", active: true });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", password: "", adminToken: "", role: "Менеджер", status: "Активен", color: "", type: "", price: "", category: "", active: true });
   const [access, setAccess] = useState<Record<string, string[]>>(roleAccess);
 
   useEffect(() => {
     const saved = localStorage.getItem("pamyat-settings");
     if (saved) setSettings(JSON.parse(saved));
+    fetch("/api/staff")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Supabase staff API is not configured");
+        const payload = await response.json() as { ok: boolean; staff?: StaffAdminItem[] };
+        if (payload.ok && payload.staff) {
+          setUsers(payload.staff.map((member) => ({ ...member, source: "supabase" })));
+          setStaffConnection("connected");
+        } else {
+          setStaffConnection("demo");
+        }
+      })
+      .catch(() => setStaffConnection("demo"));
   }, []);
 
   const notify = (message: string) => {
@@ -109,7 +121,7 @@ export function SettingsDashboard() {
     window.setTimeout(() => setToast(""), 2400);
   };
   const openModal = (type: ModalType) => {
-    setForm({ name: "", phone: "", email: "", role: "Менеджер", status: "Активен", color: "", type: "", price: "", category: "", active: true });
+    setForm({ name: "", phone: "", email: "", password: "", adminToken: "", role: "Менеджер", status: "Активен", color: "", type: "", price: "", category: "", active: true });
     setModal(type);
   };
   const saveSettings = () => {
@@ -123,22 +135,49 @@ export function SettingsDashboard() {
     notify("Демо-данные сброшены");
     window.setTimeout(() => window.location.reload(), 600);
   };
-  const saveModal = () => {
-    if (modal === "user") setUsers((current) => [{ id: `user-${Date.now()}`, name: form.name || "Новый пользователь", phone: form.phone || "+7 (000) 000-00-00", email: form.email || "user@pamyat-crm.ru", role: form.role, status: form.status as "Активен" | "Неактивен", lastLogin: "еще не входил" }, ...current]);
+  const saveModal = async () => {
+    if (modal === "user") {
+      const fallbackUser: StaffAdminItem = { id: `staff-${Date.now()}`, name: form.name || "Новый сотрудник", phone: form.phone || "+7 (000) 000-00-00", email: form.email || "staff@pamyat-crm.ru", status: form.status as "Активен" | "Неактивен", lastLogin: "еще не входил", source: "demo" };
+      try {
+        const response = await fetch("/api/staff", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-staff-admin-token": form.adminToken },
+          body: JSON.stringify({ name: form.name, phone: form.phone, email: form.email, password: form.password, active: form.status === "Активен" }),
+        });
+        const payload = await response.json() as { ok: boolean; configured?: boolean; staff?: StaffAdminItem; error?: string };
+        const created = payload.staff;
+        if (payload.ok && created) {
+          setUsers((current) => [{ id: created.id, name: created.name, phone: created.phone, email: created.email, status: created.status, lastLogin: created.lastLogin, source: "supabase" }, ...current]);
+          setStaffConnection("connected");
+          setModal(null);
+          notify("Сотрудник создан в Supabase Auth");
+          return;
+        }
+        if (payload.configured !== false) throw new Error(payload.error || "Не удалось создать сотрудника");
+      } catch (error) {
+        notify(error instanceof Error ? error.message : "Не удалось создать сотрудника");
+        return;
+      }
+      setUsers((current) => [fallbackUser, ...current]);
+      setStaffConnection("demo");
+      setModal(null);
+      notify("Supabase admin key не настроен: сотрудник добавлен только в демо-список");
+      return;
+    }
     if (modal === "material") setMaterials((current) => [{ name: form.name || "Новый материал", color: form.color || "не указан", type: form.type || "материал", price: Number(form.price) || 0, active: form.active }, ...current]);
     if (modal === "service") setServices((current) => [{ name: form.name || "Новая услуга", category: form.category || "прочее", price: Number(form.price) || 0, active: form.active }, ...current]);
     setModal(null);
     notify("Запись добавлена");
   };
   const exampleNumber = `${settings.orderPrefix}-${settings.year}-${String(settings.nextNumber).padStart(4, "0")}`;
-  const filteredUsers = useMemo(() => users.filter((user) => !query || [user.name, user.phone, user.email, user.role].some((value) => value.toLowerCase().includes(query.toLowerCase()))), [query, users]);
+  const filteredUsers = useMemo(() => users.filter((user) => !query || [user.name, user.phone, user.email, user.status].some((value) => value.toLowerCase().includes(query.toLowerCase()))), [query, users]);
 
   return (
     <>
       <AppShell
         active="Настройки"
         title="Настройки"
-        subtitle="Пользователи, справочники и параметры CRM"
+        subtitle="Сотрудники, справочники и параметры CRM"
         eyebrow={<><Link href="/" className="font-medium hover:text-brand-700">Главная</Link> <span className="mx-2">/</span> <span className="text-slate-800">Настройки</span></>}
         searchValue={query}
         onSearchChange={setQuery}
@@ -150,7 +189,7 @@ export function SettingsDashboard() {
             ["Название CRM", "crmName"], ["Тип компании", "companyType"], ["Валюта", "currency"], ["Часовой пояс", "timezone"], ["Язык интерфейса", "language"], ["Формат даты", "dateFormat"],
           ].map(([label, key]) => <TextField key={key} label={label} value={settings[key as keyof typeof settings]} onChange={(value) => setSettings({ ...settings, [key]: value })} />)}</div><div className="mt-8 rounded-2xl border bg-slate-50 p-5"><h3 className="font-bold">Нумерация заказов</h3><div className="mt-4 grid gap-4 md:grid-cols-4"><TextField label="Префикс заказа" value={settings.orderPrefix} onChange={(value) => setSettings({ ...settings, orderPrefix: value })} /><TextField label="Текущий год" value={settings.year} onChange={(value) => setSettings({ ...settings, year: value })} /><TextField label="Следующий номер заказа" value={settings.nextNumber} onChange={(value) => setSettings({ ...settings, nextNumber: value })} /><div><span className="field-label">Пример номера</span><div className="flex h-11 items-center rounded-lg border bg-white px-3.5 font-bold text-brand-700">{exampleNumber}</div></div></div></div><div className="mt-6 flex flex-wrap gap-2"><button className="btn-primary" onClick={saveSettings}><Save className="h-4 w-4" />Сохранить настройки</button><button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50" onClick={resetDemoData}>Сбросить демо-данные</button></div></section>}
 
-          {tab === "Пользователи" && <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Пользователи</h2><p className="text-sm text-slate-500">Доступ сотрудников к CRM</p></div><button className="btn-primary" onClick={() => openModal("user")}><Plus className="h-4 w-4" />Добавить пользователя</button></div><Table headers={["Имя", "Телефон", "Email", "Роль", "Статус", "Последний вход", "Действия"]}>{filteredUsers.map((user) => <tr key={user.email} className="border-b last:border-0"><Td strong>{user.name}</Td><Td>{user.phone}</Td><Td>{user.email}</Td><Td>{user.role}</Td><Td><Badge tone={user.status === "Активен" ? "green" : "gray"}>{user.status}</Badge></Td><Td>{user.lastLogin}</Td><Td><Actions /></Td></tr>)}</Table></section>}
+          {tab === "Сотрудники" && <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Сотрудники</h2><p className="text-sm text-slate-500">Один тип доступа: сотрудник CRM</p></div><button className="btn-primary" onClick={() => openModal("user")}><Plus className="h-4 w-4" />Добавить сотрудника</button></div>{staffConnection !== "connected" && <div className="mb-5 flex gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><b>Supabase admin key пока не подключен.</b><br />Добавление работает в демо-список. Для реального создания нужны `SUPABASE_SERVICE_ROLE_KEY` и `STAFF_ADMIN_SETUP_TOKEN` в Vercel.</div></div>}<Table headers={["Имя", "Телефон", "Email", "Статус", "Источник", "Последний вход", "Действия"]}>{filteredUsers.map((user) => <tr key={user.email} className="border-b last:border-0"><Td strong>{user.name}</Td><Td>{user.phone}</Td><Td>{user.email}</Td><Td><Badge tone={user.status === "Активен" ? "green" : "gray"}>{user.status}</Badge></Td><Td><Badge tone={user.source === "supabase" ? "blue" : "orange"}>{user.source === "supabase" ? "Supabase" : "Демо"}</Badge></Td><Td>{user.lastLogin}</Td><Td><Actions /></Td></tr>)}</Table></section>}
 
           {tab === "Роли" && <section className="grid gap-5 xl:grid-cols-2">{Object.entries(access).map(([role, rights]) => <div key={role} className="card"><div className="mb-4 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck className="h-5 w-5" /></span><div><h2 className="font-bold">{role}</h2><p className="text-sm text-slate-500">Права доступа</p></div></div><div className="grid gap-3 sm:grid-cols-2">{permissions.map((permission) => <label key={permission} className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3 text-sm font-medium"><input type="checkbox" checked={rights.includes(permission) || rights.includes(`${permission}: просмотр`)} onChange={(event) => setAccess((current) => ({ ...current, [role]: event.target.checked ? Array.from(new Set([...current[role], permission])) : current[role].filter((item) => item !== permission && item !== `${permission}: просмотр`) }))} />{permission}</label>)}</div><button className="btn-primary mt-5" onClick={() => notify("Права сохранены")}><Save className="h-4 w-4" />Сохранить права</button></div>)}</section>}
 
@@ -168,7 +207,7 @@ export function SettingsDashboard() {
       </AppShell>
 
       {modal && <Modal title={modalTitle(modal)} onClose={() => setModal(null)} onSave={saveModal}>
-        {modal === "user" && <><TextField label="Имя" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Телефон" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} /><TextField label="Email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} /><label><span className="field-label">Роль</span><select className="input" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}>{Object.keys(roleAccess).map((role) => <option key={role}>{role}</option>)}</select></label><label><span className="field-label">Статус</span><select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>Активен</option><option>Неактивен</option></select></label></>}
+        {modal === "user" && <><TextField label="Имя" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Телефон" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} /><TextField label="Email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" /><TextField label="Временный пароль" value={form.password} onChange={(value) => setForm({ ...form, password: value })} type="password" /><TextField label="Код администратора" value={form.adminToken} onChange={(value) => setForm({ ...form, adminToken: value })} type="password" /><label><span className="field-label">Статус</span><select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>Активен</option><option>Неактивен</option></select></label></>}
         {modal === "material" && <><TextField label="Название материала" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Цвет" value={form.color} onChange={(value) => setForm({ ...form, color: value })} /><TextField label="Тип" value={form.type} onChange={(value) => setForm({ ...form, type: value })} /><TextField label="Цена за единицу" value={form.price} onChange={(value) => setForm({ ...form, price: value })} /><Check value={form.active} onChange={(value) => setForm({ ...form, active: value })}>Активен</Check></>}
         {modal === "service" && <><TextField label="Название" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Категория" value={form.category} onChange={(value) => setForm({ ...form, category: value })} /><TextField label="Базовая цена" value={form.price} onChange={(value) => setForm({ ...form, price: value })} /><Check value={form.active} onChange={(value) => setForm({ ...form, active: value })}>Активна</Check></>}
         {["master", "crew", "source", "status"].includes(modal) && <><TextField label="Название / ФИО" value={form.name} onChange={(value) => setForm({ ...form, name: value })} /><TextField label="Описание" value={form.category} onChange={(value) => setForm({ ...form, category: value })} /><Check value={form.active} onChange={(value) => setForm({ ...form, active: value })}>Активен</Check></>}
@@ -194,6 +233,6 @@ function Check({ value, onChange, children }: { value: boolean; onChange: (value
   return <label className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3 text-sm font-medium"><input type="checkbox" checked={value} onChange={(event) => onChange(event.target.checked)} />{children}</label>;
 }
 function modalTitle(type: Exclude<ModalType, null>) {
-  const titles = { user: "Добавить пользователя", material: "Добавить материал", service: "Добавить услугу", master: "Добавить мастера", crew: "Добавить бригаду", source: "Добавить источник", status: "Добавить статус" };
+  const titles = { user: "Добавить сотрудника", material: "Добавить материал", service: "Добавить услугу", master: "Добавить мастера", crew: "Добавить бригаду", source: "Добавить источник", status: "Добавить статус" };
   return titles[type];
 }

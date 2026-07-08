@@ -13,3 +13,15 @@ export function getSupabasePublishableKey() {
 export function isSupabaseConfigured() {
   return Boolean(getSupabaseUrl() && getSupabasePublishableKey());
 }
+
+export function getSupabaseServiceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+}
+
+export function isSupabaseAdminConfigured() {
+  return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
+}
+
+export function getStaffAdminSetupToken() {
+  return process.env.STAFF_ADMIN_SETUP_TOKEN?.trim() || "";
+}

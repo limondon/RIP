@@ -27,6 +27,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 Нельзя добавлять `service_role` или `sb_secret_*` в `NEXT_PUBLIC_*`, `.env.example` или клиентский код.
 
+Для админ-панели сотрудников нужен серверный ключ:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=
+STAFF_ADMIN_SETUP_TOKEN=
+```
+
+Они используются только в `/api/staff` на сервере. Не добавляйте к ним `NEXT_PUBLIC_`.
+`STAFF_ADMIN_SETUP_TOKEN` вводится в CRM как код администратора при создании сотрудника.
+
 ## Как включать дальше
 
 1. Создать Supabase project.

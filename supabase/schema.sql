@@ -6,6 +6,7 @@ create table if not exists public.staff_profiles (
   email text not null unique,
   full_name text not null,
   short_name text not null,
+  phone text not null default '',
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
