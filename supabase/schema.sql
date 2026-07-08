@@ -13,51 +13,51 @@ create table if not exists public.staff_profiles (
 
 create table if not exists public.clients (
   id text primary key,
-  fullName text not null,
+  "fullName" text not null,
   phone text not null,
-  additionalPhone text not null default '',
+  "additionalPhone" text not null default '',
   address text not null default '',
   source text not null default '',
   comment text not null default '',
-  createdAt text not null,
+  "createdAt" text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists public.orders (
   id text primary key,
-  orderNumber text not null unique,
-  clientId text not null references public.clients(id) on delete restrict,
-  deceasedFullName text not null,
+  "orderNumber" text not null unique,
+  "clientId" text not null references public.clients(id) on delete restrict,
+  "deceasedFullName" text not null,
   cemetery text not null default '',
   section text not null default '',
   row text not null default '',
   place text not null default '',
-  monumentType text not null,
+  "monumentType" text not null,
   material text not null,
   color text not null default '',
   shape text not null default '',
   polishing text not null default '',
-  steleSize text not null default '',
-  baseSize text not null default '',
-  flowerBedSize text not null default '',
+  "steleSize" text not null default '',
+  "baseSize" text not null default '',
+  "flowerBedSize" text not null default '',
   decoration jsonb not null default '{}'::jsonb,
   services jsonb not null default '[]'::jsonb,
   items jsonb not null default '[]'::jsonb,
-  totalAmount numeric(12,2) not null default 0 check (totalAmount >= 0),
-  paidAmount numeric(12,2) not null default 0 check (paidAmount >= 0),
-  remainingAmount numeric(12,2) not null default 0 check (remainingAmount >= 0),
+  "totalAmount" numeric(12,2) not null default 0 check ("totalAmount" >= 0),
+  "paidAmount" numeric(12,2) not null default 0 check ("paidAmount" >= 0),
+  "remainingAmount" numeric(12,2) not null default 0 check ("remainingAmount" >= 0),
   status text not null,
   deadline text not null default '',
-  createdAt text not null,
+  "createdAt" text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists public.payments (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
-  clientId text not null references public.clients(id) on delete restrict,
+  "orderId" text not null references public.orders(id) on delete cascade,
+  "clientId" text not null references public.clients(id) on delete restrict,
   date text not null,
   amount numeric(12,2) not null check (amount > 0),
   method text not null,
@@ -68,29 +68,29 @@ create table if not exists public.payments (
 
 create table if not exists public.crm_events (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
-  clientId text references public.clients(id) on delete set null,
+  "orderId" text not null references public.orders(id) on delete cascade,
+  "clientId" text references public.clients(id) on delete set null,
   type text not null,
   title text not null,
   detail text not null,
   actor text not null,
-  createdAt text not null
+  "createdAt" text not null
 );
 
 create table if not exists public.production_tasks (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
+  "orderId" text not null references public.orders(id) on delete cascade,
   stage text not null,
-  masterId text not null default '',
-  startedAt text not null default '',
-  plannedReadyAt text not null default '',
+  "masterId" text not null default '',
+  "startedAt" text not null default '',
+  "plannedReadyAt" text not null default '',
   comment text not null default ''
 );
 
 create table if not exists public.installation_tasks (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
-  brigadeId text not null default '',
+  "orderId" text not null references public.orders(id) on delete cascade,
+  "brigadeId" text not null default '',
   date text not null default '',
   time text not null default '',
   status text not null,
@@ -99,8 +99,8 @@ create table if not exists public.installation_tasks (
 
 create table if not exists public.documents (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
-  clientId text not null references public.clients(id) on delete restrict,
+  "orderId" text not null references public.orders(id) on delete cascade,
+  "clientId" text not null references public.clients(id) on delete restrict,
   type text not null,
   number text not null,
   date text not null,
@@ -112,13 +112,13 @@ create table if not exists public.documents (
 
 create table if not exists public.inventory_items (
   id text primary key,
-  materialId text not null,
+  "materialId" text not null,
   name text not null,
   category text not null,
   color text not null,
   unit text not null,
-  onHand numeric(12,3) not null default 0 check (onHand >= 0),
-  minStock numeric(12,3) not null default 0 check (minStock >= 0),
+  "onHand" numeric(12,3) not null default 0 check ("onHand" >= 0),
+  "minStock" numeric(12,3) not null default 0 check ("minStock" >= 0),
   cost numeric(12,2) not null default 0 check (cost >= 0),
   supplier text not null default '',
   location text not null default '',
@@ -128,22 +128,22 @@ create table if not exists public.inventory_items (
 
 create table if not exists public.inventory_reservations (
   id text primary key,
-  orderId text not null references public.orders(id) on delete cascade,
-  itemId text not null references public.inventory_items(id) on delete restrict,
+  "orderId" text not null references public.orders(id) on delete cascade,
+  "itemId" text not null references public.inventory_items(id) on delete restrict,
   quantity numeric(12,3) not null check (quantity > 0),
   status text not null,
   comment text not null default '',
-  createdAt text not null
+  "createdAt" text not null
 );
 
 create table if not exists public.inventory_movements (
   id text primary key,
-  itemId text not null references public.inventory_items(id) on delete restrict,
-  orderId text references public.orders(id) on delete set null,
+  "itemId" text not null references public.inventory_items(id) on delete restrict,
+  "orderId" text references public.orders(id) on delete set null,
   type text not null,
   quantity numeric(12,3) not null check (quantity > 0),
   comment text not null default '',
-  createdAt text not null
+  "createdAt" text not null
 );
 
 alter table public.staff_profiles enable row level security;
