@@ -1,9 +1,9 @@
 "use client";
 
 import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveStaffSession, toStaffMember } from "@/lib/auth/staff";
+import { clearStaffSession, saveStaffSession, toStaffMember } from "@/lib/auth/staff";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function LoginPage() {
@@ -12,6 +12,13 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("reason") !== "access") return;
+    clearStaffSession();
+    getBrowserSupabaseClient()?.auth.signOut();
+    setError("Этот аккаунт не активирован для работы в CRM.");
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

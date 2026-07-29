@@ -3,6 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = new Set(["/login"]);
 
+function redirectWithSessionCookies(url: URL, source: NextResponse) {
+  const response = NextResponse.redirect(url);
+  source.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -28,7 +34,7 @@ export async function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithSessionCookies(loginUrl, response);
   }
 
   if (user) {
@@ -42,14 +48,14 @@ export async function middleware(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("reason", "access");
-      return NextResponse.redirect(loginUrl);
+      return redirectWithSessionCookies(loginUrl, response);
     }
 
     if (staff?.active && isLogin) {
       const homeUrl = request.nextUrl.clone();
       homeUrl.pathname = "/";
       homeUrl.search = "";
-      return NextResponse.redirect(homeUrl);
+      return redirectWithSessionCookies(homeUrl, response);
     }
   }
 
