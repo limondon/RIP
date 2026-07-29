@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { downloadSupabaseSnapshot, isCloudSyncEnabled, uploadLocalSnapshotToSupabase } from "@/lib/data/supabase-repository";
 import { importCrmData } from "@/lib/data/repository";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -9,13 +9,14 @@ const CLOUD_CHANGE_EVENT = "pamyat-crm-data-changed";
 
 export function CloudDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [contentVersion, setContentVersion] = useState(0);
   const hydrating = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     let syncTimer: number | undefined;
 
-    const hydrateFromCloud = async (reloadAfterImport = false) => {
+    const hydrateFromCloud = async (refreshContent = false) => {
       const result = await downloadSupabaseSnapshot();
       if (!result.ok || cancelled) return;
       const rowCount = Object.values(result.snapshot.entities).reduce((count, rows) => count + rows.length, 0);
@@ -25,7 +26,7 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
       importCrmData(result.snapshot);
       hydrating.current = false;
       window.localStorage.setItem("pamyat-cloud-sync-enabled", "true");
-      if (reloadAfterImport) window.location.reload();
+      if (refreshContent) setContentVersion((version) => version + 1);
     };
 
     const queueCloudUpload = () => {
@@ -56,5 +57,5 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   if (!ready) return <main className="grid min-h-screen place-items-center bg-slate-50 text-sm font-medium text-slate-500">Загружаем данные CRM...</main>;
-  return <>{children}</>;
+  return <Fragment key={contentVersion}>{children}</Fragment>;
 }
