@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
+import { registerCloudRefreshTriggers } from "@/lib/data/cloud-refresh-triggers";
 import { CLOUD_MUTATION_EVENT, crmCloudTables, type CrmCloudMutation } from "@/lib/data/cloud-sync-events";
 import { applySupabaseMutation, downloadSupabaseSnapshot, enableCloudSync, isCloudSyncEnabled } from "@/lib/data/supabase-repository";
 import { importCrmData } from "@/lib/data/repository";
@@ -94,12 +95,18 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
     void realtimeChannel?.subscribe();
 
     const pollTimer = window.setInterval(() => void hydrateFromCloud(true), 4000);
+    const removeRefreshTriggers = registerCloudRefreshTriggers({
+      windowTarget: window,
+      documentTarget: document,
+      refresh: () => queueRemoteRefresh(0),
+    });
     window.addEventListener(CLOUD_MUTATION_EVENT, syncMutation);
 
     return () => {
       cancelled = true;
       authListener.subscription?.unsubscribe();
       if (realtimeChannel && supabase) void supabase.removeChannel(realtimeChannel);
+      removeRefreshTriggers();
       window.clearInterval(pollTimer);
       window.clearTimeout(refreshTimer);
       window.removeEventListener(CLOUD_MUTATION_EVENT, syncMutation);
