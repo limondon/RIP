@@ -144,7 +144,16 @@ export function OrdersList() {
                     const remaining = Math.max(0, order.amount - order.paid);
                     return (
                       <tr key={order.id} className="border-b last:border-0 hover:bg-slate-50/70">
-                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-brand-700">{order.id}</td>
+                        <td className="whitespace-nowrap px-4 py-4 font-semibold">
+                          <Link
+                            href={`/orders/${order.id}`}
+                            title="Открыть заказ"
+                            className="-mx-2 inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-brand-700 hover:bg-brand-50 hover:text-brand-800"
+                          >
+                            <Eye className="h-4 w-4" />
+                            {order.id}
+                          </Link>
+                        </td>
                         <td className="max-w-[220px] px-4 py-4 font-medium text-slate-800">{order.client}</td>
                         <td className="whitespace-nowrap px-4 py-4 text-slate-600">{order.phone}</td>
                         <td className="px-4 py-4 text-slate-600">{order.product}</td>

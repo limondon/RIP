@@ -362,7 +362,7 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
         <main className="mx-auto max-w-[1600px] p-4 md:p-7 xl:p-8">
           <div className="mb-5 text-sm text-slate-500"><Link href="/orders" className="hover:text-brand-600">Заказы</Link><span className="mx-2">/</span><span className="text-slate-800">{order.id}</span></div>
 
-          <section className="mb-6 overflow-hidden rounded-2xl border bg-white shadow-card">
+          <section className="mb-6 rounded-2xl border bg-white shadow-card">
             <div className="border-b p-5 md:p-6">
               <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-start">
                 <div>
@@ -377,13 +377,26 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
                   <button className="btn-secondary" onClick={() => notify("Документы подготовлены к отправке клиенту")}><Send className="h-4 w-4" />Отправить клиенту</button>
                   <div className="relative">
                     <button className="btn-primary" onClick={() => setStatusMenu((value) => !value)}>Изменить статус<ChevronDown className="h-4 w-4" /></button>
-                    {statusMenu && <div className="absolute right-0 top-12 z-20 w-52 rounded-xl border bg-white p-2 shadow-xl">{orderStatuses.map((item) => <button key={item} className="flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50" onClick={() => changeOrderStatus(item)}>{item}</button>)}</div>}
+                    {statusMenu && (
+                      <div className="absolute right-0 top-12 z-30 w-56 rounded-xl border bg-white p-2 shadow-xl">
+                        {orderStatuses.map((item) => (
+                          <button
+                            key={item}
+                            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-50 ${item === status ? "bg-brand-50 font-semibold text-brand-700" : "text-slate-700"}`}
+                            onClick={() => changeOrderStatus(item)}
+                          >
+                            {item}
+                            {item === status && <Check className="h-4 w-4" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Link href="/orders" className="btn-secondary"><ArrowLeft className="h-4 w-4" />Назад к списку</Link>
                 </div>
               </div>
             </div>
-            <div className="grid divide-y bg-slate-50/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+            <div className="grid divide-y rounded-b-2xl bg-slate-50/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
               {[["Итоговая сумма", money(order.amount), "text-slate-950"], ["Оплачено", money(order.paid), "text-emerald-600"], ["Остаток", money(remaining), remaining ? "text-orange-600" : "text-emerald-600"], ["Срок изготовления", order.deadlineLabel, "text-brand-700"]].map(([label, value, color]) => <div key={label} className="px-5 py-4"><p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p><p className={`mt-1 text-xl font-bold ${color}`}>{value}</p></div>)}
             </div>
           </section>
