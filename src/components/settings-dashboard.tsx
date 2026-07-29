@@ -104,8 +104,11 @@ export function SettingsDashboard() {
     if (saved) setSettings(JSON.parse(saved));
     fetch("/api/staff")
       .then(async (response) => {
-        if (!response.ok) throw new Error("Supabase staff API is not configured");
-        const payload = await response.json() as { ok: boolean; staff?: StaffAdminItem[] };
+        const payload = await response.json() as { ok: boolean; configured?: boolean; staff?: StaffAdminItem[] };
+        // The API deliberately returns 403 without the administrator code.
+        // A configured backend is still available in that case.
+        if (payload.configured) setStaffConnection("connected");
+        if (!response.ok) return;
         if (payload.ok && payload.staff) {
           setUsers(payload.staff.map((member) => ({ ...member, source: "supabase" })));
           setStaffConnection("connected");
