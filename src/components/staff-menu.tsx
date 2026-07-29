@@ -2,16 +2,29 @@
 
 import { LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
-import { clearStaffSession, getStoredStaffMember, type StaffMember } from "@/lib/auth/staff";
+import { clearStaffSession, saveStaffSession, toStaffMember, type StaffMember } from "@/lib/auth/staff";
+import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function StaffMenu() {
   const [staff, setStaff] = useState<StaffMember | null>(null);
 
   useEffect(() => {
-    setStaff(getStoredStaffMember());
+    const supabase = getBrowserSupabaseClient();
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      const member = toStaffMember({
+        id: data.user.id,
+        email: data.user.email || "",
+        name: typeof data.user.user_metadata.full_name === "string" ? data.user.user_metadata.full_name : undefined,
+      });
+      saveStaffSession(member);
+      setStaff(member);
+    });
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
+    await getBrowserSupabaseClient()?.auth.signOut();
     clearStaffSession();
     window.location.href = "/login";
   };

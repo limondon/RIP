@@ -3,24 +3,44 @@
 import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { findStaffByCredentials, saveStaffSession, staffMembers } from "@/lib/auth/staff";
+import { saveStaffSession, toStaffMember } from "@/lib/auth/staff";
+import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState(staffMembers[0].email);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const member = findStaffByCredentials(email, password);
-    if (!member) {
+    const supabase = getBrowserSupabaseClient();
+    if (!supabase) {
+      setError("Вход пока не настроен. Проверьте подключение Supabase в Vercel.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setSubmitting(false);
+    if (signInError || !data.user) {
       setError("Проверьте email и пароль сотрудника");
       return;
     }
-    saveStaffSession(member);
+
+    saveStaffSession(toStaffMember({
+      id: data.user.id,
+      email: data.user.email || email.trim(),
+      name: typeof data.user.user_metadata.full_name === "string" ? data.user.user_metadata.full_name : undefined,
+    }));
     const params = new URLSearchParams(window.location.search);
-    router.replace(params.get("next") || "/");
+    const next = params.get("next");
+    router.replace(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
   };
 
   return (
@@ -57,20 +77,8 @@ export function LoginPage() {
 
               {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
-              <button className="btn-primary mt-6 w-full" type="submit">Войти <ArrowRight className="h-4 w-4" /></button>
+              <button className="btn-primary mt-6 w-full" type="submit" disabled={submitting}>{submitting ? "Проверяем..." : "Войти"} <ArrowRight className="h-4 w-4" /></button>
             </form>
-
-            <section className="mt-5 rounded-2xl border bg-white p-5 shadow-card">
-              <h3 className="font-semibold text-slate-950">Тестовые сотрудники</h3>
-              <div className="mt-4 grid gap-3">
-                {staffMembers.map((member) => (
-                  <button key={member.id} className="flex items-center justify-between rounded-xl border bg-slate-50 px-4 py-3 text-left transition hover:border-brand-200 hover:bg-brand-50" onClick={() => { setEmail(member.email); setPassword(member.password); setError(""); }}>
-                    <span><span className="block text-sm font-semibold text-slate-900">{member.name}</span><span className="block text-xs text-slate-500">{member.email}</span></span>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500">пароль {member.password}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
           </div>
         </section>
       </div>

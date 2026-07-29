@@ -158,9 +158,9 @@ alter table public.inventory_items enable row level security;
 alter table public.inventory_reservations enable row level security;
 alter table public.inventory_movements enable row level security;
 
-create policy "Active staff can read staff profiles" on public.staff_profiles
+create policy "Staff can read own profile" on public.staff_profiles
   for select to authenticated
-  using (exists (select 1 from public.staff_profiles staff where staff.id = auth.uid() and staff.active));
+  using (id = auth.uid());
 
 create policy "Active staff can use clients" on public.clients
   for all to authenticated
@@ -216,3 +216,4 @@ create policy "Active staff can use inventory movements" on public.inventory_mov
 -- This key is used only by the protected server route for employee administration.
 grant usage on schema public to service_role;
 grant select, insert, update, delete on table public.staff_profiles to service_role;
+grant select on table public.staff_profiles to authenticated;

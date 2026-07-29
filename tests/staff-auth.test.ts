@@ -1,14 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findStaffByCredentials, findStaffById, staffMembers } from "../src/lib/auth/staff";
+import { toStaffMember } from "../src/lib/auth/staff";
 
-test("находит активного сотрудника по email и паролю", () => {
-  const member = staffMembers[0];
-  assert.equal(findStaffByCredentials(member.email.toUpperCase(), member.password)?.id, member.id);
-  assert.equal(findStaffById(member.id)?.email, member.email);
+test("создает профиль сотрудника из данных Supabase", () => {
+  const member = toStaffMember({ id: "staff-1", name: "Мария Иванова", email: "maria@example.com" });
+  assert.equal(member.id, "staff-1");
+  assert.equal(member.shortName, "МИ");
+  assert.equal(member.active, true);
 });
 
-test("не пускает сотрудника с неверным паролем", () => {
-  const member = staffMembers[0];
-  assert.equal(findStaffByCredentials(member.email, "wrong-password"), null);
+test("использует email как имя, если имя не задано", () => {
+  const member = toStaffMember({ id: "staff-2", email: "manager@example.com" });
+  assert.equal(member.name, "manager");
+  assert.equal(member.shortName, "M");
 });
