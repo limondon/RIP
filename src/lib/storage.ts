@@ -1,6 +1,7 @@
 import { clients, documents, installationTasks, inventoryItems, orders, payments, productionTasks } from "@/data/mock-data";
 import { brigades } from "@/data/mock-data";
 import { getStoredStaffMember } from "@/lib/auth/staff";
+import { CLOUD_MUTATION_EVENT, createCloudMutation, type CrmCloudRow, type CrmCloudTable } from "@/lib/data/cloud-sync-events";
 import type { Client, CrmEvent, CrmEventType, Document, DocumentType, InstallationTask, InventoryItem, InventoryMovement, InventoryMovementType, InventoryReservation, Order, OrderStatus, Payment, PaymentMethod, PaymentType, ProductionStage, ProductionTask } from "@/types/crm";
 
 const ORDERS_KEY = "pamyat-crm-orders";
@@ -18,10 +19,10 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-function notifyCloudDataChanged() {
-  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof Event !== "undefined") {
-    window.dispatchEvent(new Event("pamyat-crm-data-changed"));
-  }
+function notifyCloudDataChanged(table: CrmCloudTable, previousRows: CrmCloudRow[], nextRows: CrmCloudRow[]) {
+  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function" || typeof CustomEvent === "undefined") return;
+  const mutation = createCloudMutation(table, previousRows, nextRows);
+  if (mutation) window.dispatchEvent(new CustomEvent(CLOUD_MUTATION_EVENT, { detail: mutation }));
 }
 
 function read<T>(key: string, fallback: T[]): T[] {
@@ -35,44 +36,59 @@ function read<T>(key: string, fallback: T[]): T[] {
   }
 }
 
-function write<T>(key: string, value: T[]) {
+function readLocalRows<T>(key: string) {
+  if (!canUseStorage()) return [] as T[];
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T[] : [];
+  } catch {
+    return [] as T[];
+  }
+}
+
+function write<T extends { id: string }>(key: string, table: CrmCloudTable, value: T[]) {
   if (!canUseStorage()) return;
+  const previousRows = readLocalRows<T>(key);
   window.localStorage.setItem(key, JSON.stringify(value));
-  notifyCloudDataChanged();
+  notifyCloudDataChanged(
+    table,
+    previousRows as unknown as CrmCloudRow[],
+    value as unknown as CrmCloudRow[],
+  );
 }
 
 export function getStoredOrders() { return read<Order>(ORDERS_KEY, orders); }
-export function saveStoredOrders(value: Order[]) { write(ORDERS_KEY, value); }
+export function saveStoredOrders(value: Order[]) { write(ORDERS_KEY, "orders", value); }
 export function addStoredOrder(order: Order) { saveStoredOrders([order, ...getStoredOrders()]); }
 
 export function getStoredClients() { return read<Client>(CLIENTS_KEY, clients); }
-export function saveStoredClients(value: Client[]) { write(CLIENTS_KEY, value); }
+export function saveStoredClients(value: Client[]) { write(CLIENTS_KEY, "clients", value); }
 export function addStoredClient(client: Client) { saveStoredClients([client, ...getStoredClients()]); }
 
 export function getStoredPayments() { return read<Payment>(PAYMENTS_KEY, payments); }
-export function saveStoredPayments(value: Payment[]) { write(PAYMENTS_KEY, value); }
+export function saveStoredPayments(value: Payment[]) { write(PAYMENTS_KEY, "payments", value); }
 export function addStoredPayment(payment: Payment) { saveStoredPayments([payment, ...getStoredPayments()]); }
 
 export function getStoredProductionTasks() { return read<ProductionTask>(PRODUCTION_KEY, productionTasks); }
-export function saveStoredProductionTasks(value: ProductionTask[]) { write(PRODUCTION_KEY, value); }
+export function saveStoredProductionTasks(value: ProductionTask[]) { write(PRODUCTION_KEY, "production_tasks", value); }
 export function addStoredProductionTask(task: ProductionTask) { saveStoredProductionTasks([task, ...getStoredProductionTasks()]); }
 
 export function getStoredInstallationTasks() { return read<InstallationTask>(INSTALLATION_KEY, installationTasks); }
-export function saveStoredInstallationTasks(value: InstallationTask[]) { write(INSTALLATION_KEY, value); }
+export function saveStoredInstallationTasks(value: InstallationTask[]) { write(INSTALLATION_KEY, "installation_tasks", value); }
 export function addStoredInstallationTask(task: InstallationTask) { saveStoredInstallationTasks([task, ...getStoredInstallationTasks()]); }
 
 export function getStoredEvents() { return read<CrmEvent>(EVENTS_KEY, []); }
-export function saveStoredEvents(value: CrmEvent[]) { write(EVENTS_KEY, value); }
+export function saveStoredEvents(value: CrmEvent[]) { write(EVENTS_KEY, "crm_events", value); }
 
 export function getStoredDocuments() { return read<Document>(DOCUMENTS_KEY, documents); }
-export function saveStoredDocuments(value: Document[]) { write(DOCUMENTS_KEY, value); }
+export function saveStoredDocuments(value: Document[]) { write(DOCUMENTS_KEY, "documents", value); }
 
 export function getStoredInventoryItems() { return read<InventoryItem>(INVENTORY_KEY, inventoryItems); }
-export function saveStoredInventoryItems(value: InventoryItem[]) { write(INVENTORY_KEY, value); }
+export function saveStoredInventoryItems(value: InventoryItem[]) { write(INVENTORY_KEY, "inventory_items", value); }
 export function getStoredInventoryReservations() { return read<InventoryReservation>(INVENTORY_RESERVATIONS_KEY, []); }
-export function saveStoredInventoryReservations(value: InventoryReservation[]) { write(INVENTORY_RESERVATIONS_KEY, value); }
+export function saveStoredInventoryReservations(value: InventoryReservation[]) { write(INVENTORY_RESERVATIONS_KEY, "inventory_reservations", value); }
 export function getStoredInventoryMovements() { return read<InventoryMovement>(INVENTORY_MOVEMENTS_KEY, []); }
-export function saveStoredInventoryMovements(value: InventoryMovement[]) { write(INVENTORY_MOVEMENTS_KEY, value); }
+export function saveStoredInventoryMovements(value: InventoryMovement[]) { write(INVENTORY_MOVEMENTS_KEY, "inventory_movements", value); }
 
 export function recordCrmEvent(input: {
   orderId: string;
@@ -476,7 +492,6 @@ export function cancelStoredInventoryReservation(reservationId: string, comment?
 export function clearCrmStorage() {
   if (!canUseStorage()) return;
   [ORDERS_KEY, CLIENTS_KEY, PAYMENTS_KEY, PRODUCTION_KEY, INSTALLATION_KEY, EVENTS_KEY, DOCUMENTS_KEY, INVENTORY_KEY, INVENTORY_RESERVATIONS_KEY, INVENTORY_MOVEMENTS_KEY, "pamyat-order-draft", "pamyat-last-order"].forEach((key) => window.localStorage.removeItem(key));
-  notifyCloudDataChanged();
 }
 
 export function generateOrderNumber(existingOrders = getStoredOrders()) {

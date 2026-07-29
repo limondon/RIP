@@ -7,9 +7,7 @@ import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { brigades as crmBrigades, masters as crmMasters, materials as crmMaterials, serviceCatalog, statuses as crmStatuses, users as crmUsers } from "@/data/mock-data";
-import { canUseSupabaseData, downloadSupabaseSnapshot, uploadLocalSnapshotToSupabase } from "@/lib/data/supabase-repository";
-import { importCrmData } from "@/lib/data/repository";
-import { clearCrmStorage } from "@/lib/storage";
+import { canUseSupabaseData } from "@/lib/data/supabase-repository";
 
 type Tab = "Общие" | "Сотрудники" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
 type ModalType = "user" | "material" | "service" | "master" | "crew" | "source" | "status" | null;
@@ -134,12 +132,6 @@ export function SettingsDashboard() {
     notify("Настройки сохранены");
   };
   const saveCompany = () => notify("Реквизиты сохранены");
-  const resetDemoData = () => {
-    if (!window.confirm("Сбросить демо-данные? Все созданные в браузере заказы, клиенты и платежи будут удалены.")) return;
-    clearCrmStorage();
-    notify("Демо-данные сброшены");
-    window.setTimeout(() => window.location.reload(), 600);
-  };
   const saveModal = async () => {
     if (modal === "user") {
       const fallbackUser: StaffAdminItem = { id: `staff-${Date.now()}`, name: form.name || "Новый сотрудник", phone: form.phone || "+7 (000) 000-00-00", email: form.email || "staff@pamyat-crm.ru", status: form.status as "Активен" | "Неактивен", lastLogin: "еще не входил", source: "demo" };
@@ -190,9 +182,9 @@ export function SettingsDashboard() {
       >
           <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}</div></div>
 
-          {tab === "Общие" && <><CloudDataControls notify={notify} /><section className="card"><h2 className="text-lg font-bold">Общие настройки CRM</h2><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[
+          {tab === "Общие" && <><CloudDataStatus /><section className="card"><h2 className="text-lg font-bold">Общие настройки CRM</h2><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[
             ["Название CRM", "crmName"], ["Тип компании", "companyType"], ["Валюта", "currency"], ["Часовой пояс", "timezone"], ["Язык интерфейса", "language"], ["Формат даты", "dateFormat"],
-          ].map(([label, key]) => <TextField key={key} label={label} value={settings[key as keyof typeof settings]} onChange={(value) => setSettings({ ...settings, [key]: value })} />)}</div><div className="mt-8 rounded-2xl border bg-slate-50 p-5"><h3 className="font-bold">Нумерация заказов</h3><div className="mt-4 grid gap-4 md:grid-cols-4"><TextField label="Префикс заказа" value={settings.orderPrefix} onChange={(value) => setSettings({ ...settings, orderPrefix: value })} /><TextField label="Текущий год" value={settings.year} onChange={(value) => setSettings({ ...settings, year: value })} /><TextField label="Следующий номер заказа" value={settings.nextNumber} onChange={(value) => setSettings({ ...settings, nextNumber: value })} /><div><span className="field-label">Пример номера</span><div className="flex h-11 items-center rounded-lg border bg-white px-3.5 font-bold text-brand-700">{exampleNumber}</div></div></div></div><div className="mt-6 flex flex-wrap gap-2"><button className="btn-primary" onClick={saveSettings}><Save className="h-4 w-4" />Сохранить настройки</button><button className="btn-secondary border-red-200 text-red-700 hover:bg-red-50" onClick={resetDemoData}>Сбросить демо-данные</button></div></section></>}
+          ].map(([label, key]) => <TextField key={key} label={label} value={settings[key as keyof typeof settings]} onChange={(value) => setSettings({ ...settings, [key]: value })} />)}</div><div className="mt-8 rounded-2xl border bg-slate-50 p-5"><h3 className="font-bold">Нумерация заказов</h3><div className="mt-4 grid gap-4 md:grid-cols-4"><TextField label="Префикс заказа" value={settings.orderPrefix} onChange={(value) => setSettings({ ...settings, orderPrefix: value })} /><TextField label="Текущий год" value={settings.year} onChange={(value) => setSettings({ ...settings, year: value })} /><TextField label="Следующий номер заказа" value={settings.nextNumber} onChange={(value) => setSettings({ ...settings, nextNumber: value })} /><div><span className="field-label">Пример номера</span><div className="flex h-11 items-center rounded-lg border bg-white px-3.5 font-bold text-brand-700">{exampleNumber}</div></div></div></div><div className="mt-6 flex flex-wrap gap-2"><button className="btn-primary" onClick={saveSettings}><Save className="h-4 w-4" />Сохранить настройки</button></div></section></>}
 
           {tab === "Сотрудники" && <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Сотрудники</h2><p className="text-sm text-slate-500">Один тип доступа: сотрудник CRM</p></div><button className="btn-primary" onClick={() => openModal("user")}><Plus className="h-4 w-4" />Добавить сотрудника</button></div>{staffConnection !== "connected" && <div className="mb-5 flex gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><b>Supabase admin key пока не подключен.</b><br />Добавление работает в демо-список. Для реального создания нужны `SUPABASE_SERVICE_ROLE_KEY` и `STAFF_ADMIN_SETUP_TOKEN` в Vercel.</div></div>}<Table headers={["Имя", "Телефон", "Email", "Статус", "Источник", "Последний вход", "Действия"]}>{filteredUsers.map((user) => <tr key={user.email} className="border-b last:border-0"><Td strong>{user.name}</Td><Td>{user.phone}</Td><Td>{user.email}</Td><Td><Badge tone={user.status === "Активен" ? "green" : "gray"}>{user.status}</Badge></Td><Td><Badge tone={user.source === "supabase" ? "blue" : "orange"}>{user.source === "supabase" ? "Supabase" : "Демо"}</Badge></Td><Td>{user.lastLogin}</Td><Td><Actions /></Td></tr>)}</Table></section>}
 
@@ -222,36 +214,10 @@ export function SettingsDashboard() {
   );
 }
 
-function CloudDataControls({ notify }: { notify: (message: string) => void }) {
-  const [busy, setBusy] = useState<"upload" | "download" | null>(null);
+function CloudDataStatus() {
   const connected = canUseSupabaseData();
 
-  const upload = async () => {
-    setBusy("upload");
-    const result = await uploadLocalSnapshotToSupabase();
-    setBusy(null);
-    notify(result.ok ? "Данные CRM перенесены в общую базу" : result.error);
-  };
-
-  const download = async () => {
-    setBusy("download");
-    const result = await downloadSupabaseSnapshot();
-    setBusy(null);
-    if (!result.ok) {
-      notify(result.error);
-      return;
-    }
-    const rowCount = Object.values(result.snapshot.entities).reduce((count, rows) => count + rows.length, 0);
-    if (!rowCount) {
-      notify("В общей базе пока нет данных");
-      return;
-    }
-    importCrmData(result.snapshot);
-    notify("Данные из общей базы загружены");
-    window.setTimeout(() => window.location.reload(), 600);
-  };
-
-  return <section className="mb-6 border border-brand-200 bg-brand-50/40 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-slate-950">Общие данные CRM</h2><p className="mt-1 max-w-2xl text-sm text-slate-600">После первого переноса заказы, оплаты, производство, установка, склад и документы будут сохраняться в Supabase и открываться на других устройствах.</p></div><Badge tone={connected ? "green" : "orange"}>{connected ? "Supabase подключен" : "Supabase не настроен"}</Badge></div><div className="mt-5 flex flex-wrap gap-2"><button className="btn-primary" onClick={upload} disabled={!connected || busy !== null}>{busy === "upload" ? "Переносим..." : "Перенести текущие данные в общую базу"}</button><button className="btn-secondary" onClick={download} disabled={!connected || busy !== null}>{busy === "download" ? "Загружаем..." : "Загрузить данные из общей базы"}</button></div></section>;
+  return <section className="mb-6 border border-brand-200 bg-brand-50/40 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-slate-950">Общие данные CRM</h2><p className="mt-1 max-w-2xl text-sm text-slate-600">Заказы, оплаты, производство, установка, склад и документы сохраняются автоматически и появляются у других сотрудников без ручного переноса.</p></div><Badge tone={connected ? "green" : "orange"}>{connected ? "Автосинхронизация включена" : "Supabase не настроен"}</Badge></div></section>;
 }
 
 function Table({ headers, children }: { headers: string[]; children: ReactNode }) {

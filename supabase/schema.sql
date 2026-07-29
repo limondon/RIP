@@ -219,3 +219,34 @@ grant select, insert, update, delete on table public.staff_profiles to service_r
 grant select on table public.staff_profiles to authenticated;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on table public.clients, public.orders, public.payments, public.crm_events, public.production_tasks, public.installation_tasks, public.documents, public.inventory_items, public.inventory_reservations, public.inventory_movements to authenticated;
+
+-- Realtime makes changes appear instantly in other open CRM sessions.
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'clients',
+    'orders',
+    'payments',
+    'production_tasks',
+    'installation_tasks',
+    'crm_events',
+    'documents',
+    'inventory_items',
+    'inventory_reservations',
+    'inventory_movements'
+  ]
+  loop
+    if not exists (
+      select 1
+      from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = table_name
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', table_name);
+    end if;
+  end loop;
+end
+$$;
