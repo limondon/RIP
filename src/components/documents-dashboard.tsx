@@ -123,9 +123,9 @@ export function DocumentsDashboard() {
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">{[["Всего документов", documents.length], ["Наряд-заказы", documents.filter((d) => d.type === "Наряд-заказ").length], ["Договоры", documents.filter((d) => d.type === "Договор").length], ["Квитанции", documents.filter((d) => d.type === "Квитанция").length], ["Акты", documents.filter((d) => d.type === "Акт выполненных работ").length], ["Ожидают подписи", documents.filter((d) => ["Сформирован", "Отправлен клиенту"].includes(d.status)).length]].map(([label, value]) => <section key={String(label)} className="card p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></section>)}</div>
           <section className="card mb-6 p-5"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_1fr_1fr_1fr_auto]"><label className="relative"><Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input className="input pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="№ заказа, клиент или телефон" /></label><select className="input" value={type} onChange={(event) => setType(event.target.value)}><option value="">Все типы</option>{documentTypes.map((item) => <option key={item}>{item}</option>)}</select><select className="input" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Все статусы</option>{documentStatuses.map((item) => <option key={item}>{item}</option>)}</select><input className="input" type="date" value={date} onChange={(event) => setDate(event.target.value)} /><button className="btn-secondary" onClick={resetFilters}><RotateCcw className="h-4 w-4" />Сбросить фильтры</button></div></section>
-          <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500"}`} onClick={() => setTab(item)}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-brand-600" />}</button>)}</div></div>
+          <div className="workspace-tabs"><div className="workspace-tabs-row">{tabs.map((item) => <button key={item} className={`workspace-tab ${tab === item ? "workspace-tab-active" : ""}`} onClick={() => setTab(item)}>{item}</button>)}</div></div>
 
-          {tab === "Шаблоны" ? <Templates onPreview={(docType) => { const doc = createDocumentDraft(docType, mockOrders[0].id, mockClients[0].id, "2026-06-16", "Предпросмотр шаблона"); setSelected(doc); }} onUse={(docType) => { setForm({ ...form, type: docType }); setModal(true); }} /> : <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)]"><DocumentsTable documents={filtered} onSelect={setSelected} onPrint={printDocument} onStub={notify} /><section className="card document-preview"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">Предпросмотр документа</h2><button className="btn-primary" onClick={printDocument}><Printer className="h-4 w-4" />Печать документа</button></div><Paper document={selected} /></section></div>}
+          {tab === "Шаблоны" ? <Templates onPreview={(docType) => { const doc = createDocumentDraft(docType, mockOrders[0].id, mockClients[0].id, "2026-06-16", "Предпросмотр шаблона"); setSelected(doc); }} onUse={(docType) => { setForm({ ...form, type: docType }); setModal(true); }} /> : <div className="grid gap-6"><DocumentsTable documents={filtered} onSelect={setSelected} onPrint={printDocument} onStub={notify} /><section className="card document-preview"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">Предпросмотр документа</h2><button className="btn-primary" onClick={printDocument}><Printer className="h-4 w-4" />Печать документа</button></div><Paper document={selected} /></section></div>}
       </AppShell>
 
       <div className="print-only"><Paper document={selected} /></div>
@@ -136,7 +136,49 @@ export function DocumentsDashboard() {
 }
 
 function DocumentsTable({ documents, onSelect, onPrint, onStub }: { documents: CrmDocument[]; onSelect: (doc: CrmDocument) => void; onPrint: () => void; onStub: (message: string) => void }) {
-  return <section className="overflow-hidden rounded-2xl border bg-white shadow-card"><div className="border-b px-5 py-4"><h2 className="font-bold">Документы</h2><p className="text-sm text-slate-500">Найдено: {documents.length}</p></div><div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["№ документа", "Тип документа", "№ заказа", "Клиент", "Телефон", "Дата создания", "Сумма", "Статус", "Действия"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{documents.map((doc) => <tr key={doc.id} className="border-b last:border-0"><td className="px-4 py-4 font-semibold text-brand-700">{doc.id}</td><td className="px-4 py-4">{doc.type}</td><td className="px-4 py-4"><Link href={`/orders/${doc.orderId}`} className="text-brand-700">{doc.orderId}</Link></td><td className="px-4 py-4">{doc.client}</td><td className="px-4 py-4">{doc.phone}</td><td className="px-4 py-4">{doc.createdAt}</td><td className="px-4 py-4 font-semibold">{money(doc.amount)}</td><td className="px-4 py-4"><StatusBadge status={doc.status} /></td><td className="px-4 py-4"><div className="flex gap-1"><button className="icon-button" title="Открыть" onClick={() => onSelect(doc)}><Eye className="h-4 w-4" /></button><button className="icon-button" title="Печать" onClick={() => { onSelect(doc); window.setTimeout(onPrint, 0); }}><Printer className="h-4 w-4" /></button><button className="icon-button" title="Скачать PDF" onClick={() => onStub("PDF подготовлен к скачиванию")}><Download className="h-4 w-4" /></button><button className="icon-button" title="Отправить клиенту" onClick={() => onStub("Документ подготовлен к отправке клиенту")}><Send className="h-4 w-4" /></button></div></td></tr>)}</tbody></table></div></section>;
+  return (
+    <section className="workspace-panel min-w-0 overflow-hidden">
+      <div className="border-b px-5 py-4">
+        <h2 className="font-bold">Документы</h2>
+        <p className="text-sm text-slate-500">Найдено: {documents.length}</p>
+      </div>
+      <div className="data-table-scroll">
+        <table className="w-full min-w-[1100px] text-left text-sm">
+          <thead>
+            <tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">
+              {["№ документа", "Тип документа", "№ заказа", "Клиент", "Телефон", "Дата создания", "Сумма", "Статус", "Действия"].map((item, index) => (
+                <th key={item} className={`px-4 py-3 ${index === 0 ? "record-cell !bg-slate-50" : ""}`}>{item}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((doc) => (
+              <tr key={doc.id} className="border-b transition hover:bg-slate-50 last:border-0">
+                <td className="record-cell px-4 py-4">
+                  <button className="record-link" onClick={() => onSelect(doc)}><Eye className="h-4 w-4" />{doc.id}</button>
+                </td>
+                <td className="px-4 py-4">{doc.type}</td>
+                <td className="px-4 py-4"><Link href={`/orders/${doc.orderId}`} className="record-link">{doc.orderId}</Link></td>
+                <td className="px-4 py-4">{doc.client}</td>
+                <td className="px-4 py-4">{doc.phone}</td>
+                <td className="px-4 py-4">{doc.createdAt}</td>
+                <td className="px-4 py-4 font-semibold">{money(doc.amount)}</td>
+                <td className="px-4 py-4"><StatusBadge status={doc.status} /></td>
+                <td className="px-4 py-4">
+                  <div className="flex gap-1">
+                    <button className="icon-button" title="Открыть" onClick={() => onSelect(doc)}><Eye className="h-4 w-4" /></button>
+                    <button className="icon-button" title="Печать" onClick={() => { onSelect(doc); window.setTimeout(onPrint, 0); }}><Printer className="h-4 w-4" /></button>
+                    <button className="icon-button" title="Скачать PDF" onClick={() => onStub("PDF подготовлен к скачиванию")}><Download className="h-4 w-4" /></button>
+                    <button className="icon-button" title="Отправить клиенту" onClick={() => onStub("Документ подготовлен к отправке клиенту")}><Send className="h-4 w-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 function Templates({ onPreview, onUse }: { onPreview: (type: DocumentType) => void; onUse: (type: DocumentType) => void }) {

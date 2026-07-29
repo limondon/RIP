@@ -1,9 +1,6 @@
 "use client";
 
 import {
-  Bell,
-  CalendarDays,
-  CircleHelp,
   ClipboardList,
   FileText,
   HandCoins,
@@ -21,6 +18,7 @@ import {
 import Link from "next/link";
 import { ReactNode, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
+import { HeaderTools } from "@/components/header-tools";
 
 const navItems = [
   [LayoutDashboard, "Главная", "/"],
@@ -99,19 +97,15 @@ export function AppShell({
             </div>
           ) : <div className="min-w-0 flex-1" />}
           {primaryAction}
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => (
-            <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}>
-              <Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}
-            </button>
-          ))}
+          <HeaderTools />
         </header>
 
-        <main className="mx-auto max-w-[1700px] p-4 md:p-7 xl:p-8">
+        <main className="mx-auto min-w-0 max-w-[1700px] p-4 md:p-7 xl:p-8">
           {(title || subtitle || eyebrow || mobileAction) && (
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 {eyebrow && <div className="mb-2 text-sm text-slate-500">{eyebrow}</div>}
-                {title && <h1 className="text-3xl font-bold tracking-tight text-slate-950">{title}</h1>}
+                {title && <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">{title}</h1>}
                 {subtitle && <p className="mt-1 text-slate-500">{subtitle}</p>}
               </div>
               {mobileAction}

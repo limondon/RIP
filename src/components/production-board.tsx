@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, ClipboardList, Clock3,
+  AlertTriangle, CheckCircle2, ChevronDown, ClipboardList, Clock3, Eye,
   HardHat, Plus, RotateCcw, Search, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -149,16 +149,16 @@ export function ProductionBoard() {
             </div>
           </section>
 
-          <section className="mb-6 overflow-x-auto pb-2">
-            <div className="grid min-w-[2100px] grid-cols-7 gap-4">
+          <section className="kanban-scroll mb-6">
+            <div className="kanban-board">
               {productionStages.map((column) => {
                 const columnOrders = filtered.filter((order) => order.stage === column);
-                return <div key={column} className="rounded-2xl border bg-white p-3 shadow-card"><div className="mb-3 flex items-center justify-between px-1"><h2 className="font-bold text-slate-900">{column}</h2><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">{columnOrders.length}</span></div><div className="space-y-3">{columnOrders.map((order) => <OrderCard key={order.id} order={order} onStageChange={changeStage} onMasterChange={(id, masterId) => updateProduction(id, { masterId }, "Мастер назначен")} onDeadlineChange={(id, plannedReadyAt) => updateProduction(id, { plannedReadyAt }, "Плановая готовность изменена")} />)}{!columnOrders.length && <div className="rounded-xl border border-dashed p-6 text-center text-sm text-slate-400">Нет заказов</div>}</div></div>;
+                return <div key={column} className="workspace-panel min-w-0 p-3"><div className="mb-3 flex items-center justify-between px-1"><h2 className="font-bold text-slate-900">{column}</h2><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">{columnOrders.length}</span></div><div className="space-y-3">{columnOrders.map((order) => <OrderCard key={order.id} order={order} onStageChange={changeStage} onMasterChange={(id, masterId) => updateProduction(id, { masterId }, "Мастер назначен")} onDeadlineChange={(id, plannedReadyAt) => updateProduction(id, { plannedReadyAt }, "Плановая готовность изменена")} />)}{!columnOrders.length && <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-400">Нет заказов</div>}</div></div>;
               })}
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
+          <section className="workspace-panel overflow-hidden">
             <div className="border-b px-5 py-4"><h2 className="font-bold text-slate-900">Производственный реестр</h2><p className="mt-0.5 text-sm text-slate-500">Найдено: {filtered.length}</p></div>
             <div className="overflow-x-auto"><table className="w-full min-w-[1400px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["№ заказа", "Клиент", "Тип изделия", "Материал", "Текущий этап", "Мастер", "Дата передачи", "Плановая готовность", "Осталось дней", "Комментарий", "Действия"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{filtered.map((order) => { const days = daysUntil(order.deadline); return <tr key={order.id} className="border-b last:border-0"><td className="px-4 py-4 font-semibold text-brand-700">{order.id}</td><td className="px-4 py-4 font-medium">{order.client}</td><td className="px-4 py-4 text-slate-600">{order.product}</td><td className="px-4 py-4 text-slate-600">{order.material}</td><td className="px-4 py-4"><select className="input h-9 min-w-40" value={order.stage} onChange={(event) => changeStage(order.id, event.target.value as ProductionStage)}>{productionStages.map((item) => <option key={item}>{item}</option>)}</select></td><td className="px-4 py-4"><select className="input h-9 min-w-44" value={order.masterId} onChange={(event) => updateProduction(order.id, { masterId: event.target.value }, "Мастер назначен")}>{masters.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select></td><td className="px-4 py-4">{order.transferDate}</td><td className="px-4 py-4"><input className="input h-9 min-w-36" type="date" value={order.deadline} onChange={(event) => updateProduction(order.id, { plannedReadyAt: event.target.value }, "Плановая готовность изменена")} /></td><td className={`px-4 py-4 font-bold ${days < 0 ? "text-red-600" : days <= 3 ? "text-orange-600" : "text-slate-700"}`}>{days < 0 ? `${Math.abs(days)} дн. просрочено` : `${days} дн.`}</td><td className="px-4 py-4"><input className="input h-9 min-w-64" value={order.comment} onChange={(event) => updateProduction(order.id, { comment: event.target.value }, "Комментарий производства обновлен")} /></td><td className="px-4 py-4"><Link href={`/orders/${order.id}`} className="btn-secondary h-9">Открыть заказ</Link></td></tr>; })}</tbody></table></div>
           </section>

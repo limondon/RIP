@@ -1,12 +1,13 @@
 "use client";
 
 import {
-  ArrowLeft, Bell, CalendarDays, CircleHelp, ClipboardList, FileImage, FileText, HandCoins, HardHat,
+  ArrowLeft, ClipboardList, FileImage, FileText, HandCoins, HardHat,
   LayoutDashboard, Menu, PackageCheck, PhoneCall, Plus, Search, Send, Settings, UsersRound, WalletCards, X, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
+import { HeaderTools } from "@/components/header-tools";
 import { getStoredStaffMember, type StaffMember } from "@/lib/auth/staff";
 import type { MockClient } from "@/lib/clients/mock-clients";
 import { getClientById, getClientTotals } from "@/lib/clients/mock-clients";
@@ -97,7 +98,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col bg-navy-950 text-white transition-transform lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
         <Link href="/" className="flex h-[82px] items-center border-b border-white/10 px-6"><div className="mr-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-600"><LayoutDashboard className="h-5 w-5" /></div><div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div></Link>
         <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label, href]) => href ? <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Клиенты" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link> : <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>)}
+          {nav.map(([Icon, label, href]) => <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Клиенты" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{label}</Link>)}
         </nav>
         <div className="border-t border-white/10 p-4"><StaffMenu /></div>
       </aside>
@@ -107,7 +108,7 @@ export function ClientDetails({ client }: { client: MockClient | null }) {
           <button aria-label="Открыть меню" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></button>
           <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" placeholder="Поиск по клиентам, телефонам, адресам..." /></div>
           <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
+          <HeaderTools />
         </header>
 
         <main className="mx-auto max-w-[1600px] p-4 md:p-7 xl:p-8">

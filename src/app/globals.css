@@ -11,14 +11,56 @@
   .field-label { @apply mb-2 block text-sm font-medium text-slate-700; }
   .input { @apply h-11 w-full rounded-lg border bg-white px-3.5 text-[15px] text-slate-800 transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
   .textarea { @apply min-h-24 w-full resize-y rounded-lg border bg-white px-3.5 py-3 text-[15px] transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
-  .card { @apply rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card; }
+  .card { @apply rounded-xl border border-slate-200/80 bg-white p-5 shadow-card md:p-6; }
   .btn { @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition focus:outline-none focus:ring-4; }
   .btn-primary { @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 focus:ring-brand-100; }
   .btn-secondary { @apply btn border bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-100; }
   .upload-zone { @apply flex min-h-28 cursor-pointer items-center justify-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 text-center transition hover:border-brand-400 hover:bg-brand-50; }
   .file-tile { @apply flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-slate-50 p-4 text-center transition hover:border-brand-400 hover:bg-brand-50; }
   .icon-button { @apply grid h-8 w-8 place-items-center rounded-lg transition; }
+  .header-tool { @apply h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-100; }
+  .workspace-panel { @apply rounded-xl border border-slate-200/80 bg-white shadow-card; }
+  .workspace-tabs { @apply mb-6 overflow-x-auto rounded-xl border border-slate-200/80 bg-white px-2 shadow-card; }
+  .workspace-tabs-row { @apply flex min-w-max; }
+  .workspace-tab { @apply relative min-h-11 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:text-slate-800; }
+  .workspace-tab-active { @apply text-brand-700; }
+  .workspace-tab-active::after { content: ""; @apply absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600; }
+  .data-table-scroll { @apply max-w-full overflow-x-auto overscroll-x-contain; scrollbar-gutter: stable; }
+  .data-table-scroll::-webkit-scrollbar, .kanban-scroll::-webkit-scrollbar { height: 10px; }
+  .data-table-scroll::-webkit-scrollbar-track, .kanban-scroll::-webkit-scrollbar-track { @apply bg-slate-100; }
+  .data-table-scroll::-webkit-scrollbar-thumb, .kanban-scroll::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300; }
+  .data-table-scroll::-webkit-scrollbar-thumb:hover, .kanban-scroll::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+  .record-cell { @apply sticky left-0 z-10 bg-white shadow-[1px_0_0_0_rgb(226_232_240)]; }
+  tr:hover .record-cell { @apply bg-slate-50; }
+  .record-link { @apply inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:text-brand-700 hover:underline; }
+  .kanban-scroll { @apply max-w-full overflow-x-auto overscroll-x-contain pb-3; scrollbar-gutter: stable; }
+  .kanban-board { @apply grid auto-cols-[minmax(286px,1fr)] grid-flow-col gap-4; }
   .print-only { display: none; }
+}
+
+@supports selector(:has(*)) {
+  .overflow-x-auto:has(> table) {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: stable;
+  }
+  .overflow-x-auto:has(> table)::-webkit-scrollbar { height: 10px; }
+  .overflow-x-auto:has(> table)::-webkit-scrollbar-track { background: rgb(241 245 249); }
+  .overflow-x-auto:has(> table)::-webkit-scrollbar-thumb { border-radius: 9999px; background: rgb(203 213 225); }
+  .overflow-x-auto > table th:first-child,
+  .overflow-x-auto > table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: white;
+    box-shadow: 1px 0 0 rgb(226 232 240);
+  }
+  .overflow-x-auto > table th:first-child {
+    background: rgb(248 250 252);
+  }
+  .overflow-x-auto > table tr:hover td:first-child {
+    background: rgb(248 250 252);
+  }
 }
 
 @media print {

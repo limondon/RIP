@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Bell,
-  CalendarDays,
   Check,
   ChevronDown,
   CircleHelp,
@@ -12,6 +10,7 @@ import {
   HardHat,
   LayoutDashboard,
   Menu,
+  Package,
   PackageCheck,
   Pencil,
   Plus,
@@ -27,6 +26,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
+import { HeaderTools } from "@/components/header-tools";
 import { calculateOrderTotals, toNonNegativeNumber, updateOrderItem } from "@/lib/order/calculations";
 import { createInitialOrderData } from "@/lib/order/defaults";
 import {
@@ -43,15 +43,16 @@ import type { OrderFormData, OrderItem, ServiceItem } from "@/types/order";
 
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 const nav = [
-  [LayoutDashboard, "Главная"],
-  [ClipboardList, "Заказы"],
-  [UsersRound, "Клиенты"],
-  [HardHat, "Производство"],
-  [PackageCheck, "Установка"],
-  [HandCoins, "Финансы"],
-  [FileText, "Документы"],
-  [Settings, "Настройки"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string]>;
+  [LayoutDashboard, "Главная", "/"],
+  [ClipboardList, "Заказы", "/orders"],
+  [UsersRound, "Клиенты", "/clients"],
+  [HardHat, "Производство", "/production"],
+  [PackageCheck, "Установка", "/installation"],
+  [Package, "Склад", "/warehouse"],
+  [HandCoins, "Финансы", "/finance"],
+  [FileText, "Документы", "/documents"],
+  [Settings, "Настройки", "/settings"],
+] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 
 function Field({
   label,
@@ -289,47 +290,10 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
           </div>
         </Link>
         <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label]) => label === "Главная" ? (
-            <Link key={label} href="/" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+          {nav.map(([Icon, label, href]) => (
+            <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Заказы" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               <Icon className="h-[18px] w-[18px]" />{label}
             </Link>
-          ) : label === "Заказы" ? (
-            <Link
-              key={label}
-              href="/orders"
-              className="flex h-11 w-full items-center gap-3 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-lg shadow-blue-950/20"
-            >
-              <Icon className="h-[18px] w-[18px]" />{label}
-              <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">12</span>
-            </Link>
-          ) : label === "Клиенты" ? (
-            <Link key={label} href="/clients" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Производство" ? (
-            <Link key={label} href="/production" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Установка" ? (
-            <Link key={label} href="/installation" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Финансы" ? (
-            <Link key={label} href="/finance" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Документы" ? (
-            <Link key={label} href="/documents" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Настройки" ? (
-            <Link key={label} href="/settings" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : (
-            <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </button>
           ))}
         </nav>
         <div className="border-t border-white/10 p-4">
@@ -347,16 +311,7 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
             <input className="input bg-slate-50 pl-10" placeholder="Поиск по заказам, клиентам, телефонам..." />
           </div>
           <Link href="/orders/new" className="btn-primary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => (
-            <button
-              key={index}
-              aria-label={["Календарь", "Уведомления", "Помощь"][index]}
-              className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}
-            >
-              <Icon className="h-5 w-5" />
-              {index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}
-            </button>
-          ))}
+          <HeaderTools />
         </header>
 
         <main className="mx-auto max-w-[1540px] p-4 md:p-7 xl:p-8">

@@ -2,11 +2,8 @@
 
 import {
   ArrowLeft,
-  Bell,
-  CalendarDays,
   Check,
   ChevronDown,
-  CircleHelp,
   ClipboardList,
   Download,
   FileImage,
@@ -31,6 +28,7 @@ import {
 import Link from "next/link";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
+import { HeaderTools } from "@/components/header-tools";
 import { brigades, masters } from "@/data/mock-data";
 import type { OrderDetails as OrderDetailsData, OrderStatus } from "@/lib/order/mock-orders";
 import { getOrderById, orderStatuses, statusStyles } from "@/lib/order/mock-orders";
@@ -56,9 +54,9 @@ const tabs = ["Общая информация", "Клиент", "Изделие
 type Tab = (typeof tabs)[number];
 
 const nav = [
-  [LayoutDashboard, "Главная"], [ClipboardList, "Заказы"], [UsersRound, "Клиенты"], [HardHat, "Производство"],
-  [PackageCheck, "Установка"], [Package, "Склад"], [HandCoins, "Финансы"], [FileText, "Документы"], [Settings, "Настройки"],
-] satisfies ReadonlyArray<readonly [LucideIcon, string]>;
+  [LayoutDashboard, "Главная", "/"], [ClipboardList, "Заказы", "/orders"], [UsersRound, "Клиенты", "/clients"], [HardHat, "Производство", "/production"],
+  [PackageCheck, "Установка", "/installation"], [Package, "Склад", "/warehouse"], [HandCoins, "Финансы", "/finance"], [FileText, "Документы", "/documents"], [Settings, "Настройки", "/settings"],
+] satisfies ReadonlyArray<readonly [LucideIcon, string, string]>;
 
 const productionStages: ProductionStage[] = ["Ожидает макет", "Макет согласован", "Резка", "Полировка", "Гравировка", "Сборка", "Готов"];
 const installationStatuses: InstallationStatus[] = ["Не назначена", "Запланирована", "Выехали", "Установлено", "Перенос", "Проблема"];
@@ -305,44 +303,10 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
           <div><div className="font-bold tracking-[0.18em]">ПАМЯТЬ</div><div className="text-xs text-slate-400">ритуальная мастерская</div></div>
         </Link>
         <nav className="flex-1 space-y-1 p-4">
-          {nav.map(([Icon, label]) => label === "Главная" ? (
-            <Link key={label} href="/" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+          {nav.map(([Icon, label, href]) => (
+            <Link key={label} href={href} className={`flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${label === "Заказы" ? "bg-brand-600 text-white shadow-lg shadow-blue-950/20" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
               <Icon className="h-[18px] w-[18px]" />{label}
             </Link>
-          ) : label === "Заказы" ? (
-            <Link key={label} href="/orders" className="flex h-11 w-full items-center gap-3 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-lg shadow-blue-950/20">
-              <Icon className="h-[18px] w-[18px]" />{label}<span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-xs">12</span>
-            </Link>
-          ) : label === "Клиенты" ? (
-            <Link key={label} href="/clients" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Производство" ? (
-            <Link key={label} href="/production" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Установка" ? (
-            <Link key={label} href="/installation" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Склад" ? (
-            <Link key={label} href="/warehouse" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Финансы" ? (
-            <Link key={label} href="/finance" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Документы" ? (
-            <Link key={label} href="/documents" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : label === "Настройки" ? (
-            <Link key={label} href="/settings" className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
-              <Icon className="h-[18px] w-[18px]" />{label}
-            </Link>
-          ) : (
-            <button key={label} className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"><Icon className="h-[18px] w-[18px]" />{label}</button>
           ))}
         </nav>
         <div className="border-t border-white/10 p-4">
@@ -356,7 +320,7 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
           <div className="relative min-w-0 max-w-xl flex-1"><Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" /><input className="input bg-slate-50 pl-10" placeholder="Поиск по заказам, клиентам, телефонам..." /></div>
           <button className="btn-primary hidden md:inline-flex" onClick={() => openPaymentModal("Доплата", "Перевод")}><HandCoins className="h-4 w-4" />Принять оплату</button>
           <Link href="/orders/new" className="btn-secondary hidden md:inline-flex"><Plus className="h-4 w-4" />Создать заказ</Link>
-          {[CalendarDays, Bell, CircleHelp].map((Icon, index) => <button key={index} aria-label={["Календарь", "Уведомления", "Помощь"][index]} className={`relative h-10 w-10 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 ${index === 1 ? "hidden sm:grid" : "hidden md:grid"}`}><Icon className="h-5 w-5" />{index === 1 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" />}</button>)}
+          <HeaderTools />
         </header>
 
         <main className="mx-auto max-w-[1600px] p-4 md:p-7 xl:p-8">
@@ -421,9 +385,9 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
             </div>
           </section>
 
-          <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card">
-            <div className="flex min-w-max">
-              {tabs.map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`relative px-4 py-4 text-sm font-semibold transition ${activeTab === tab ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{tab}{activeTab === tab && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}
+          <div className="workspace-tabs">
+            <div className="workspace-tabs-row">
+              {tabs.map((tab) => <button key={tab} onClick={() => setActiveTab(tab)} className={`workspace-tab ${activeTab === tab ? "workspace-tab-active" : ""}`}>{tab}</button>)}
             </div>
           </div>
 

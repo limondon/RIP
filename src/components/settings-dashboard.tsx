@@ -87,6 +87,12 @@ export function SettingsDashboard() {
   const [staffConnection, setStaffConnection] = useState<"checking" | "demo" | "connected">("checking");
   const [materials, setMaterials] = useState(initialMaterials);
   const [services, setServices] = useState(initialServices);
+  const [addedMasters, setAddedMasters] = useState<Array<[string, string, string, boolean, number]>>([]);
+  const [addedCrews, setAddedCrews] = useState<Array<[string, string, string, number, string]>>([]);
+  const [addedSources, setAddedSources] = useState<Array<[string, number, number, number, boolean]>>([]);
+  const [addedStatuses, setAddedStatuses] = useState<Record<string, string[]>>({});
+  const [statusGroup, setStatusGroup] = useState(statusGroups[0].title);
+  const [directoriesLoaded, setDirectoriesLoaded] = useState(false);
   const [settings, setSettings] = useState({
     crmName: "ПАМЯТЬ", companyType: "ритуальная мастерская", currency: "₽", timezone: "Europe/Moscow",
     language: "русский", dateFormat: "дд.мм.гггг", orderPrefix: "ЗК", year: "2026", nextNumber: "128",
@@ -102,6 +108,24 @@ export function SettingsDashboard() {
   useEffect(() => {
     const saved = localStorage.getItem("pamyat-settings");
     if (saved) setSettings(JSON.parse(saved));
+    const savedCompany = localStorage.getItem("pamyat-company");
+    if (savedCompany) setCompany(JSON.parse(savedCompany));
+    const savedAccess = localStorage.getItem("pamyat-role-access");
+    if (savedAccess) setAccess(JSON.parse(savedAccess));
+    const savedDirectories = localStorage.getItem("pamyat-custom-directories");
+    if (savedDirectories) {
+      const parsed = JSON.parse(savedDirectories) as {
+        masters?: Array<[string, string, string, boolean, number]>;
+        crews?: Array<[string, string, string, number, string]>;
+        sources?: Array<[string, number, number, number, boolean]>;
+        statuses?: Record<string, string[]>;
+      };
+      setAddedMasters(parsed.masters ?? []);
+      setAddedCrews(parsed.crews ?? []);
+      setAddedSources(parsed.sources ?? []);
+      setAddedStatuses(parsed.statuses ?? {});
+    }
+    setDirectoriesLoaded(true);
     fetch("/api/staff")
       .then(async (response) => {
         const payload = await response.json() as { ok: boolean; configured?: boolean; staff?: StaffAdminItem[] };
@@ -119,6 +143,16 @@ export function SettingsDashboard() {
       .catch(() => setStaffConnection("demo"));
   }, []);
 
+  useEffect(() => {
+    if (!directoriesLoaded) return;
+    localStorage.setItem("pamyat-custom-directories", JSON.stringify({
+      masters: addedMasters,
+      crews: addedCrews,
+      sources: addedSources,
+      statuses: addedStatuses,
+    }));
+  }, [addedCrews, addedMasters, addedSources, addedStatuses, directoriesLoaded]);
+
   const notify = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
@@ -131,7 +165,14 @@ export function SettingsDashboard() {
     localStorage.setItem("pamyat-settings", JSON.stringify(settings));
     notify("Настройки сохранены");
   };
-  const saveCompany = () => notify("Реквизиты сохранены");
+  const saveCompany = () => {
+    localStorage.setItem("pamyat-company", JSON.stringify(company));
+    notify("Реквизиты сохранены");
+  };
+  const saveAccess = () => {
+    localStorage.setItem("pamyat-role-access", JSON.stringify(access));
+    notify("Права сохранены");
+  };
   const saveModal = async () => {
     if (modal === "user") {
       const fallbackUser: StaffAdminItem = { id: `staff-${Date.now()}`, name: form.name || "Новый сотрудник", phone: form.phone || "+7 (000) 000-00-00", email: form.email || "staff@pamyat-crm.ru", status: form.status as "Активен" | "Неактивен", lastLogin: "еще не входил", source: "demo" };
@@ -163,6 +204,10 @@ export function SettingsDashboard() {
     }
     if (modal === "material") setMaterials((current) => [{ name: form.name || "Новый материал", color: form.color || "не указан", type: form.type || "материал", price: Number(form.price) || 0, active: form.active }, ...current]);
     if (modal === "service") setServices((current) => [{ name: form.name || "Новая услуга", category: form.category || "прочее", price: Number(form.price) || 0, active: form.active }, ...current]);
+    if (modal === "master") setAddedMasters((current) => [[form.name || "Новый мастер", form.category || "не указана", form.phone || "не указан", form.active, 0], ...current]);
+    if (modal === "crew") setAddedCrews((current) => [[form.name || "Новая бригада", form.category || "состав не указан", form.phone || "не указан", 0, "Свободна"], ...current]);
+    if (modal === "source") setAddedSources((current) => [[form.name || "Новый источник", 0, 0, 0, form.active], ...current]);
+    if (modal === "status") setAddedStatuses((current) => ({ ...current, [statusGroup]: [form.name || "Новый статус", ...(current[statusGroup] ?? [])] }));
     setModal(null);
     notify("Запись добавлена");
   };
@@ -180,7 +225,7 @@ export function SettingsDashboard() {
         onSearchChange={setQuery}
         searchPlaceholder="Поиск по настройкам, пользователям, справочникам..."
       >
-          <div className="mb-6 overflow-x-auto rounded-2xl border bg-white px-2 shadow-card"><div className="flex min-w-max">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`relative px-4 py-4 text-sm font-semibold ${tab === item ? "text-brand-700" : "text-slate-500 hover:text-slate-800"}`}>{item}{tab === item && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-brand-600" />}</button>)}</div></div>
+          <div className="workspace-tabs"><div className="workspace-tabs-row">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`workspace-tab ${tab === item ? "workspace-tab-active" : ""}`}>{item}</button>)}</div></div>
 
           {tab === "Общие" && <><CloudDataStatus /><section className="card"><h2 className="text-lg font-bold">Общие настройки CRM</h2><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[
             ["Название CRM", "crmName"], ["Тип компании", "companyType"], ["Валюта", "currency"], ["Часовой пояс", "timezone"], ["Язык интерфейса", "language"], ["Формат даты", "dateFormat"],
@@ -188,17 +233,17 @@ export function SettingsDashboard() {
 
           {tab === "Сотрудники" && <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Сотрудники</h2><p className="text-sm text-slate-500">Один тип доступа: сотрудник CRM</p></div><button className="btn-primary" onClick={() => openModal("user")}><Plus className="h-4 w-4" />Добавить сотрудника</button></div>{staffConnection !== "connected" && <div className="mb-5 flex gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><b>Supabase admin key пока не подключен.</b><br />Добавление работает в демо-список. Для реального создания нужны `SUPABASE_SERVICE_ROLE_KEY` и `STAFF_ADMIN_SETUP_TOKEN` в Vercel.</div></div>}<Table headers={["Имя", "Телефон", "Email", "Статус", "Источник", "Последний вход", "Действия"]}>{filteredUsers.map((user) => <tr key={user.email} className="border-b last:border-0"><Td strong>{user.name}</Td><Td>{user.phone}</Td><Td>{user.email}</Td><Td><Badge tone={user.status === "Активен" ? "green" : "gray"}>{user.status}</Badge></Td><Td><Badge tone={user.source === "supabase" ? "blue" : "orange"}>{user.source === "supabase" ? "Supabase" : "Демо"}</Badge></Td><Td>{user.lastLogin}</Td><Td><Actions /></Td></tr>)}</Table></section>}
 
-          {tab === "Роли" && <section className="grid gap-5 xl:grid-cols-2">{Object.entries(access).map(([role, rights]) => <div key={role} className="card"><div className="mb-4 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck className="h-5 w-5" /></span><div><h2 className="font-bold">{role}</h2><p className="text-sm text-slate-500">Права доступа</p></div></div><div className="grid gap-3 sm:grid-cols-2">{permissions.map((permission) => <label key={permission} className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3 text-sm font-medium"><input type="checkbox" checked={rights.includes(permission) || rights.includes(`${permission}: просмотр`)} onChange={(event) => setAccess((current) => ({ ...current, [role]: event.target.checked ? Array.from(new Set([...current[role], permission])) : current[role].filter((item) => item !== permission && item !== `${permission}: просмотр`) }))} />{permission}</label>)}</div><button className="btn-primary mt-5" onClick={() => notify("Права сохранены")}><Save className="h-4 w-4" />Сохранить права</button></div>)}</section>}
+          {tab === "Роли" && <section className="grid gap-5 xl:grid-cols-2">{Object.entries(access).map(([role, rights]) => <div key={role} className="card"><div className="mb-4 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck className="h-5 w-5" /></span><div><h2 className="font-bold">{role}</h2><p className="text-sm text-slate-500">Права доступа</p></div></div><div className="grid gap-3 sm:grid-cols-2">{permissions.map((permission) => <label key={permission} className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3 text-sm font-medium"><input type="checkbox" checked={rights.includes(permission) || rights.includes(`${permission}: просмотр`)} onChange={(event) => setAccess((current) => ({ ...current, [role]: event.target.checked ? Array.from(new Set([...current[role], permission])) : current[role].filter((item) => item !== permission && item !== `${permission}: просмотр`) }))} />{permission}</label>)}</div><button className="btn-primary mt-5" onClick={saveAccess}><Save className="h-4 w-4" />Сохранить права</button></div>)}</section>}
 
           {tab === "Материалы" && <Directory title="Материалы" button="Добавить материал" onAdd={() => openModal("material")} headers={["Название материала", "Цвет", "Тип", "Цена за единицу", "Активен", "Действия"]}>{materials.map((item) => <tr key={String(item.name)} className="border-b last:border-0"><Td strong>{item.name}</Td><Td>{item.color}</Td><Td>{item.type}</Td><Td>{money(item.price)}</Td><Td><Badge tone={item.active ? "green" : "gray"}>{item.active ? "Да" : "Нет"}</Badge></Td><Td><Actions /></Td></tr>)}</Directory>}
 
           {tab === "Услуги" && <Directory title="Услуги" button="Добавить услугу" onAdd={() => openModal("service")} headers={["Услуга", "Категория", "Базовая цена", "Активна", "Действия"]}>{services.map((item) => <tr key={String(item.name)} className="border-b last:border-0"><Td strong>{item.name}</Td><Td>{item.category}</Td><Td>{money(item.price)}</Td><Td><Badge tone={item.active ? "green" : "gray"}>{item.active ? "Да" : "Нет"}</Badge></Td><Td><Actions /></Td></tr>)}</Directory>}
 
-          {tab === "Статусы" && <div className="space-y-5">{statusGroups.map((group) => <section key={group.title} className="card"><div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-bold">{group.title}</h2><button className="btn-secondary" onClick={() => openModal("status")}><Plus className="h-4 w-4" />Добавить статус</button></div><Table headers={["Название", "Цвет", "Порядок", "Активен"]}>{group.items.map((item, index) => <tr key={item} className="border-b last:border-0"><Td strong>{item}</Td><Td><Badge tone={item.includes("Проблема") || item.includes("Перенос") ? "red" : item.includes("Готов") || item.includes("Завершен") || item.includes("Установлено") ? "green" : "blue"}>{item}</Badge></Td><Td>{index + 1}</Td><Td><Badge tone="green">Да</Badge></Td></tr>)}</Table></section>)}</div>}
+          {tab === "Статусы" && <div className="space-y-5">{statusGroups.map((group) => { const items = [...(addedStatuses[group.title] ?? []), ...group.items]; return <section key={group.title} className="card"><div className="mb-5 flex items-center justify-between"><h2 className="text-lg font-bold">{group.title}</h2><button className="btn-secondary" onClick={() => { setStatusGroup(group.title); openModal("status"); }}><Plus className="h-4 w-4" />Добавить статус</button></div><Table headers={["Название", "Цвет", "Порядок", "Активен"]}>{items.map((item, index) => <tr key={item} className="border-b last:border-0"><Td strong>{item}</Td><Td><Badge tone={item.includes("Проблема") || item.includes("Перенос") ? "red" : item.includes("Готов") || item.includes("Завершен") || item.includes("Установлено") ? "green" : "blue"}>{item}</Badge></Td><Td>{index + 1}</Td><Td><Badge tone="green">Да</Badge></Td></tr>)}</Table></section>; })}</div>}
 
-          {tab === "Мастера и бригады" && <div className="grid gap-6 xl:grid-cols-2"><Directory title="Мастера производства" button="Добавить мастера" onAdd={() => openModal("master")} headers={["ФИО", "Специализация", "Телефон", "Активен", "Заказов", "Действия"]}>{masters.map(([name, spec, phone, active, count]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{spec}</Td><Td>{phone}</Td><Td><Badge tone={active ? "green" : "gray"}>{active ? "Да" : "Нет"}</Badge></Td><Td>{count}</Td><Td><Actions /></Td></tr>)}</Directory><Directory title="Бригады установки" button="Добавить бригаду" onAdd={() => openModal("crew")} headers={["Название", "Состав", "Телефон", "Установок", "Статус", "Действия"]}>{crews.map(([name, people, phone, count, status]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{people}</Td><Td>{phone}</Td><Td>{count}</Td><Td><Badge tone={status === "Свободна" ? "green" : status === "Загружена" ? "orange" : "blue"}>{status}</Badge></Td><Td><Actions /></Td></tr>)}</Directory></div>}
+          {tab === "Мастера и бригады" && <div className="grid gap-6"><Directory title="Мастера производства" button="Добавить мастера" onAdd={() => openModal("master")} headers={["ФИО", "Специализация", "Телефон", "Активен", "Заказов", "Действия"]}>{[...addedMasters, ...masters].map(([name, spec, phone, active, count]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{spec}</Td><Td>{phone}</Td><Td><Badge tone={active ? "green" : "gray"}>{active ? "Да" : "Нет"}</Badge></Td><Td>{count}</Td><Td><Actions /></Td></tr>)}</Directory><Directory title="Бригады установки" button="Добавить бригаду" onAdd={() => openModal("crew")} headers={["Название", "Состав", "Телефон", "Установок", "Статус", "Действия"]}>{[...addedCrews, ...crews].map(([name, people, phone, count, status]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{people}</Td><Td>{phone}</Td><Td>{count}</Td><Td><Badge tone={status === "Свободна" ? "green" : status === "Загружена" ? "orange" : "blue"}>{status}</Badge></Td><Td><Actions /></Td></tr>)}</Directory></div>}
 
-          {tab === "Источники клиентов" && <Directory title="Источники клиентов" button="Добавить источник" onAdd={() => openModal("source")} headers={["Источник", "Клиентов", "Заказов", "Сумма заказов", "Активен", "Действия"]}>{sources.map(([name, clients, orders, sum, active]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{clients}</Td><Td>{orders}</Td><Td>{money(Number(sum))}</Td><Td><Badge tone={active ? "green" : "gray"}>{active ? "Да" : "Нет"}</Badge></Td><Td><Actions /></Td></tr>)}</Directory>}
+          {tab === "Источники клиентов" && <Directory title="Источники клиентов" button="Добавить источник" onAdd={() => openModal("source")} headers={["Источник", "Клиентов", "Заказов", "Сумма заказов", "Активен", "Действия"]}>{[...addedSources, ...sources].map(([name, clients, orders, sum, active]) => <tr key={String(name)} className="border-b last:border-0"><Td strong>{name}</Td><Td>{clients}</Td><Td>{orders}</Td><Td>{money(Number(sum))}</Td><Td><Badge tone={active ? "green" : "gray"}>{active ? "Да" : "Нет"}</Badge></Td><Td><Actions /></Td></tr>)}</Directory>}
 
           {tab === "Компания" && <section className="card"><h2 className="text-lg font-bold">Реквизиты компании</h2><div className="mt-6 grid gap-4 md:grid-cols-2">{Object.entries({ name: "Название компании", inn: "ИНН", ogrn: "ОГРН", address: "Адрес", phone: "Телефон", email: "Email", site: "Сайт", director: "Руководитель", bank: "Банковские реквизиты" }).map(([key, label]) => <TextField key={key} label={label} value={company[key as keyof typeof company]} onChange={(value) => setCompany({ ...company, [key]: value })} />)}</div><label className="upload-zone mt-6"><UploadCloud className="h-7 w-7 text-brand-600" /><span><b>Загрузить логотип или печать</b><br /><span className="text-sm text-slate-500">PNG, JPG или PDF для будущих документов</span></span><input type="file" className="hidden" onChange={() => notify("Файл выбран")} /></label><button className="btn-primary mt-6" onClick={saveCompany}><Save className="h-4 w-4" />Сохранить реквизиты</button></section>}
       </AppShell>
@@ -227,7 +272,7 @@ function Td({ children, strong }: { children: ReactNode; strong?: boolean }) {
   return <td className={`px-4 py-4 ${strong ? "font-semibold text-slate-900" : ""}`}>{children}</td>;
 }
 function Actions() {
-  return <div className="flex gap-1"><button className="btn-secondary h-8 px-3 text-xs">Редактировать</button><button className="btn-secondary h-8 px-3 text-xs">Отключить</button><button className="icon-button text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button></div>;
+  return <div className="flex gap-1" title="Изменение существующих справочников будет подключено после переноса настроек в общую базу"><button disabled className="btn-secondary h-8 cursor-not-allowed px-3 text-xs opacity-50">Редактировать</button><button disabled className="btn-secondary h-8 cursor-not-allowed px-3 text-xs opacity-50">Отключить</button><button disabled aria-label="Удаление недоступно" className="icon-button cursor-not-allowed text-slate-300"><Trash2 className="h-4 w-4" /></button></div>;
 }
 function Directory({ title, button, onAdd, headers, children }: { title: string; button: string; onAdd: () => void; headers: string[]; children: ReactNode }) {
   return <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">{title}</h2><p className="text-sm text-slate-500">Справочник CRM</p></div><button className="btn-primary" onClick={onAdd}><Plus className="h-4 w-4" />{button}</button></div><Table headers={headers}>{children}</Table></section>;
