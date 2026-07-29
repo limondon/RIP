@@ -18,6 +18,12 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
+function notifyCloudDataChanged() {
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof Event !== "undefined") {
+    window.dispatchEvent(new Event("pamyat-crm-data-changed"));
+  }
+}
+
 function read<T>(key: string, fallback: T[]): T[] {
   if (!canUseStorage()) return fallback;
   try {
@@ -30,7 +36,9 @@ function read<T>(key: string, fallback: T[]): T[] {
 }
 
 function write<T>(key: string, value: T[]) {
-  if (canUseStorage()) window.localStorage.setItem(key, JSON.stringify(value));
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+  notifyCloudDataChanged();
 }
 
 export function getStoredOrders() { return read<Order>(ORDERS_KEY, orders); }
@@ -468,6 +476,7 @@ export function cancelStoredInventoryReservation(reservationId: string, comment?
 export function clearCrmStorage() {
   if (!canUseStorage()) return;
   [ORDERS_KEY, CLIENTS_KEY, PAYMENTS_KEY, PRODUCTION_KEY, INSTALLATION_KEY, EVENTS_KEY, DOCUMENTS_KEY, INVENTORY_KEY, INVENTORY_RESERVATIONS_KEY, INVENTORY_MOVEMENTS_KEY, "pamyat-order-draft", "pamyat-last-order"].forEach((key) => window.localStorage.removeItem(key));
+  notifyCloudDataChanged();
 }
 
 export function generateOrderNumber(existingOrders = getStoredOrders()) {

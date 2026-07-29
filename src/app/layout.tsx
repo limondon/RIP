@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CloudDataProvider } from "@/components/cloud-data-provider";
 
 export const metadata: Metadata = {
   title: "ПАМЯТЬ CRM",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body><CloudDataProvider>{children}</CloudDataProvider></body>
     </html>
   );
 }

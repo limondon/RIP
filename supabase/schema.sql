@@ -217,3 +217,5 @@ create policy "Active staff can use inventory movements" on public.inventory_mov
 grant usage on schema public to service_role;
 grant select, insert, update, delete on table public.staff_profiles to service_role;
 grant select on table public.staff_profiles to authenticated;
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.clients, public.orders, public.payments, public.crm_events, public.production_tasks, public.installation_tasks, public.documents, public.inventory_items, public.inventory_reservations, public.inventory_movements to authenticated;

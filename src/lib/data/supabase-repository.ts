@@ -34,6 +34,28 @@ export function canUseSupabaseData() {
   return Boolean(getBrowserSupabaseClient());
 }
 
+export function isCloudSyncEnabled() {
+  return typeof window !== "undefined" && window.localStorage.getItem("pamyat-cloud-sync-enabled") === "true";
+}
+
+export function enableCloudSync() {
+  if (typeof window !== "undefined") window.localStorage.setItem("pamyat-cloud-sync-enabled", "true");
+}
+
+export async function downloadSupabaseSnapshot() {
+  const supabase = getBrowserSupabaseClient();
+  if (!supabase) return { ok: false as const, error: "Supabase не настроен" };
+
+  const entities = {} as CrmDataSnapshot["entities"];
+  for (const table of tableOrder) {
+    const { data, error } = await (supabase.from(table) as any).select("*");
+    if (error) return { ok: false as const, error: `Ошибка Supabase (${table}): ${error.message}` };
+    entities[snapshotKeys[table]] = (data ?? []) as never;
+  }
+
+  return { ok: true as const, snapshot: { schemaVersion: 1 as const, exportedAt: new Date().toISOString(), entities } };
+}
+
 export async function uploadLocalSnapshotToSupabase(snapshot = exportCrmData()) {
   const supabase = getBrowserSupabaseClient();
   if (!supabase) return { ok: false as const, error: "Supabase не настроен: добавьте URL и publishable key" };
@@ -45,5 +67,6 @@ export async function uploadLocalSnapshotToSupabase(snapshot = exportCrmData()) 
     if (error) return { ok: false as const, error: `Ошибка Supabase (${table}): ${error.message}` };
   }
 
+  enableCloudSync();
   return { ok: true as const };
 }
