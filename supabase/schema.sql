@@ -211,3 +211,8 @@ create policy "Active staff can use inventory movements" on public.inventory_mov
   for all to authenticated
   using (exists (select 1 from public.staff_profiles staff where staff.id = auth.uid() and staff.active))
   with check (exists (select 1 from public.staff_profiles staff where staff.id = auth.uid() and staff.active));
+
+-- New Supabase projects can require explicit Data API grants even for service_role.
+-- This key is used only by the protected server route for employee administration.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table public.staff_profiles to service_role;
