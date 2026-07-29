@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { downloadSupabaseSnapshot, isCloudSyncEnabled, uploadLocalSnapshotToSupabase } from "@/lib/data/supabase-repository";
 import { importCrmData } from "@/lib/data/repository";
+import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const CLOUD_CHANGE_EVENT = "pamyat-crm-data-changed";
 
@@ -14,7 +15,7 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     let syncTimer: number | undefined;
 
-    const hydrateFromCloud = async () => {
+    const hydrateFromCloud = async (reloadAfterImport = false) => {
       const result = await downloadSupabaseSnapshot();
       if (!result.ok || cancelled) return;
       const rowCount = Object.values(result.snapshot.entities).reduce((count, rows) => count + rows.length, 0);
@@ -24,6 +25,7 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
       importCrmData(result.snapshot);
       hydrating.current = false;
       window.localStorage.setItem("pamyat-cloud-sync-enabled", "true");
+      if (reloadAfterImport) window.location.reload();
     };
 
     const queueCloudUpload = () => {
@@ -37,10 +39,17 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
     void hydrateFromCloud().finally(() => {
       if (!cancelled) setReady(true);
     });
+
+    const supabase = getBrowserSupabaseClient();
+    const { data: authListener } = supabase?.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void hydrateFromCloud(true);
+    }) ?? { data: { subscription: null } };
+
     window.addEventListener(CLOUD_CHANGE_EVENT, queueCloudUpload);
 
     return () => {
       cancelled = true;
+      authListener.subscription?.unsubscribe();
       window.clearTimeout(syncTimer);
       window.removeEventListener(CLOUD_CHANGE_EVENT, queueCloudUpload);
     };
