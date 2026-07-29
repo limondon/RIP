@@ -17,6 +17,9 @@ const tableOrder = [
 type SupabaseTable = (typeof tableOrder)[number];
 type SnapshotKey = keyof CrmDataSnapshot["entities"];
 
+const tablesWithCreatedAt = new Set<SupabaseTable>(["clients", "orders", "payments", "documents", "inventory_items"]);
+const tablesWithUpdatedAt = new Set<SupabaseTable>(["clients", "orders", "inventory_items"]);
+
 const snapshotKeys: Record<SupabaseTable, SnapshotKey> = {
   clients: "clients",
   orders: "orders",
@@ -63,7 +66,18 @@ export async function uploadLocalSnapshotToSupabase(snapshot = exportCrmData()) 
   for (const table of tableOrder) {
     const rows = snapshot.entities[snapshotKeys[table]];
     if (!rows.length) continue;
-    const { error } = await supabase.from(table).upsert(rows as never[], { onConflict: "id" });
+    const timestamp = new Date().toISOString();
+    const preparedRows = rows.map((row) => {
+      const record = row as unknown as Record<string, unknown>;
+      if (!tablesWithCreatedAt.has(table)) return record;
+
+      return {
+        ...record,
+        created_at: record.created_at || timestamp,
+        ...(tablesWithUpdatedAt.has(table) ? { updated_at: record.updated_at || timestamp } : {}),
+      };
+    });
+    const { error } = await supabase.from(table).upsert(preparedRows as never[], { onConflict: "id" });
     if (error) return { ok: false as const, error: `Ошибка Supabase (${table}): ${error.message}` };
   }
 
