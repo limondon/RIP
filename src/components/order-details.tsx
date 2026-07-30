@@ -211,11 +211,11 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
         date: paymentForm.date,
         comment: paymentForm.comment,
       });
+      refreshOrder();
       if (!result.ok) {
         notify(result.error);
         return;
       }
-      refreshOrder();
       setPaymentModal(false);
       notify(`${paymentForm.type}: ${money(result.payment.amount)} сохранено`);
     } finally {
@@ -237,8 +237,8 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
         quantity: Number(inventoryForm.quantity) || 0,
         comment: inventoryForm.comment,
       });
-      if (!result.ok) return notify(result.error);
       refreshOrder();
+      if (!result.ok) return notify(result.error);
       setInventoryForm((form) => ({ ...form, comment: "", quantity: "1" }));
       notify("Материал зарезервирован под заказ");
     } finally {
@@ -256,8 +256,8 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
       const result = action === "writeOff"
         ? await writeOffInventoryReservationTransaction(input)
         : await cancelInventoryReservationTransaction(input);
-      if (!result.ok) return notify(result.error);
       refreshOrder();
+      if (!result.ok) return notify(result.error);
       notify(action === "writeOff" ? "Материал списан в заказ" : "Резерв снят");
     } finally {
       criticalActionRef.current = false;

@@ -101,8 +101,8 @@ export function WarehouseDashboard() {
       const result = mode === "receive"
         ? await receiveInventoryTransaction({ operationId, itemId: selectedItem, quantity: amount, comment })
         : await reserveInventoryTransaction({ operationId, itemId: selectedItem, orderId: selectedOrder, quantity: amount, comment });
-      if (!result.ok) return notify(result.error);
       refresh();
+      if (!result.ok) return notify(result.error);
       setComment("");
       notify(mode === "receive" ? "Поступление сохранено" : "Резерв создан");
     } finally {
@@ -120,8 +120,8 @@ export function WarehouseDashboard() {
       const result = action === "writeOff"
         ? await writeOffInventoryReservationTransaction(input)
         : await cancelInventoryReservationTransaction(input);
-      if (!result.ok) return notify(result.error);
       refresh();
+      if (!result.ok) return notify(result.error);
       notify(action === "writeOff" ? "Материал списан" : "Резерв снят");
     } finally {
       criticalActionRef.current = false;

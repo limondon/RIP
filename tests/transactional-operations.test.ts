@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import {
+  executeServerOperation,
+  shouldUseLocalCriticalFallback,
+} from "../src/lib/data/critical-operations";
 
 const migration = readFileSync("supabase/transactional-payments-inventory.sql", "utf8");
 const criticalOperations = readFileSync("src/lib/data/critical-operations.ts", "utf8");
@@ -40,4 +44,27 @@ test("аудит хранит сотрудника, время и состоян
   assert.match(migration, /after_state jsonb not null/);
   assert.match(migration, /created_at timestamptz not null default now\(\)/);
   assert.doesNotMatch(criticalOperations, /service.?role/i);
+});
+
+test("настроенный Supabase никогда не переключает критическую операцию на локальное сохранение", () => {
+  assert.equal(shouldUseLocalCriticalFallback(true), false);
+  assert.equal(shouldUseLocalCriticalFallback(false), true);
+  assert.doesNotMatch(criticalOperations, /isCloudSyncEnabled/);
+});
+
+test("после серверного конфликта локальный кеш перечитывается до показа результата", async () => {
+  const sequence: string[] = [];
+  const response = await executeServerOperation(
+    async () => {
+      sequence.push("rpc");
+      return { data: null, error: { message: "Заказ уже полностью оплачен" } };
+    },
+    async () => {
+      sequence.push("refresh");
+    },
+  );
+
+  sequence.push("result");
+  assert.deepEqual(sequence, ["rpc", "refresh", "result"]);
+  assert.equal(response.error?.message, "Заказ уже полностью оплачен");
 });

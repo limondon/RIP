@@ -3,7 +3,6 @@ import type { CrmCloudRow } from "@/lib/data/cloud-sync-events";
 import {
   applySupabaseMutation,
   downloadSupabaseSnapshot,
-  isCloudSyncEnabled,
 } from "@/lib/data/supabase-repository";
 import {
   addStoredPaymentForOrder,
@@ -26,17 +25,26 @@ export function createOperationId() {
   });
 }
 
-function shouldUseServerTransactions() {
-  return Boolean(getBrowserSupabaseClient()) && isCloudSyncEnabled();
+export function shouldUseLocalCriticalFallback(hasSupabaseClient: boolean) {
+  return !hasSupabaseClient;
 }
 
-async function refreshLocalSnapshotAfterTransaction() {
+async function refreshLocalSnapshotFromCloud() {
   const snapshot = await downloadSupabaseSnapshot();
   if (!snapshot.ok) {
-    console.error("Транзакция выполнена, но локальные данные пока не обновились", snapshot.error);
+    console.error("Не удалось обновить локальные данные из Supabase", snapshot.error);
     return;
   }
   importCrmData(snapshot.snapshot, { notifyCloud: false });
+}
+
+export async function executeServerOperation<T>(
+  execute: () => Promise<T>,
+  reconcile: () => Promise<void>,
+) {
+  const result = await execute();
+  await reconcile();
+  return result;
 }
 
 async function callTransaction<T>(
@@ -50,9 +58,19 @@ async function callTransaction<T>(
   localFallback: () => T,
 ): Promise<T | { ok: false; error: string }> {
   const supabase = getBrowserSupabaseClient();
-  if (!supabase || !shouldUseServerTransactions()) return localFallback();
+  if (shouldUseLocalCriticalFallback(Boolean(supabase))) return localFallback();
+  if (!supabase) return localFallback();
 
-  const { data, error } = await supabase.rpc(functionName, args as never);
+  const { data, error } = await executeServerOperation(
+    async () => {
+      const response = await supabase.rpc(functionName, args as never);
+      return response as {
+        data: unknown;
+        error: { code?: string; message: string } | null;
+      };
+    },
+    refreshLocalSnapshotFromCloud,
+  );
   if (error) {
     const missingFunction = error.code === "PGRST202" || /function .* does not exist/i.test(error.message);
     return {
@@ -63,7 +81,6 @@ async function callTransaction<T>(
     };
   }
 
-  await refreshLocalSnapshotAfterTransaction();
   if (!data || typeof data !== "object") {
     return { ok: false, error: "Supabase вернул некорректный результат операции" };
   }
@@ -165,7 +182,7 @@ export async function cancelInventoryReservationTransaction(input: {
 }
 
 export async function ensureCloudOrderForPayment(order: Order, client: Client) {
-  if (!shouldUseServerTransactions()) return { ok: true as const };
+  if (shouldUseLocalCriticalFallback(Boolean(getBrowserSupabaseClient()))) return { ok: true as const };
 
   const clientResult = await applySupabaseMutation({
     table: "clients",

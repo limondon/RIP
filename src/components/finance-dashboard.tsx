@@ -103,11 +103,11 @@ export function FinanceDashboard() {
         date: form.date,
         comment: form.comment || "Ручное добавление платежа",
       });
+      refreshFinance();
       if (!result.ok) {
         notify(result.error);
         return;
       }
-      refreshFinance();
       setModal(false);
       notify("Платеж добавлен");
     } finally {
