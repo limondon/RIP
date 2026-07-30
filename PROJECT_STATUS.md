@@ -38,7 +38,7 @@ npm run build
 
 Результат: ошибок TypeScript и lint нет, 19 тестов прошли, production build собран.
 
-SQL пока не применен к удаленному Supabase: в рабочем окружении нет CLI/подключения и публичных параметров проекта. Для включения функций нужно один раз выполнить целиком `supabase/transactional-payments-inventory.sql` в Supabase SQL Editor.
+SQL применен к удаленному Supabase 2026-07-30 через SQL Editor. Supabase подтвердил выполнение сообщением `Success. No rows returned`; транзакционные функции, ограничения прямой записи и журнал действий включены.
 
 ## Предыдущее обновление
 
