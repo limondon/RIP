@@ -132,11 +132,11 @@ export function OrdersList() {
               <div><h2 className="font-bold text-slate-900">Реестр заказов</h2><p className="mt-0.5 text-sm text-slate-500">Найдено: {filteredOrders.length}</p></div>
               <div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex"><TrendingUp className="h-4 w-4" />Данные обновлены сегодня</div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1380px] text-left text-sm">
+            <div>
+              <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {["№ заказа", "Клиент", "Телефон", "Тип изделия", "Материал", "Статус", "Срок", "Сумма", "Оплачено", "Остаток", "Действия"].map((heading) => <th key={heading} className="whitespace-nowrap px-4 py-3.5">{heading}</th>)}
+                    {["№ заказа", "Клиент", "Телефон", "Тип изделия", "Материал", "Статус", "Срок", "Сумма", "Оплачено", "Остаток", "Действия"].map((heading, index) => <th key={heading} className={`whitespace-nowrap px-4 py-3.5 ${[2, 3, 4, 7, 8].includes(index) ? "hidden 2xl:table-cell" : ""}`}>{heading}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -155,13 +155,13 @@ export function OrdersList() {
                           </Link>
                         </td>
                         <td className="max-w-[220px] px-4 py-4 font-medium text-slate-800">{order.client}</td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-600">{order.phone}</td>
-                        <td className="px-4 py-4 text-slate-600">{order.product}</td>
-                        <td className="px-4 py-4 text-slate-600">{order.material}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-4 text-slate-600 2xl:table-cell">{order.phone}</td>
+                        <td className="hidden px-4 py-4 text-slate-600 2xl:table-cell">{order.product}</td>
+                        <td className="hidden px-4 py-4 text-slate-600 2xl:table-cell">{order.material}</td>
                         <td className="px-4 py-4"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyles[order.status]}`}>{order.status}</span></td>
                         <td className="whitespace-nowrap px-4 py-4"><span className={order.status === "Проблема" ? "font-semibold text-red-600" : "text-slate-600"}>{order.deadlineLabel}</span></td>
-                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">{money(order.amount)}</td>
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-600">{money(order.paid)}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-4 font-semibold text-slate-800 2xl:table-cell">{money(order.amount)}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-4 text-slate-600 2xl:table-cell">{money(order.paid)}</td>
                         <td className={`whitespace-nowrap px-4 py-4 font-bold ${remaining ? "text-orange-600" : "text-emerald-600"}`}>{money(remaining)}</td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-1">

@@ -92,9 +92,9 @@ export function ClientsList() {
 
           <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
             <div className="flex items-center justify-between border-b px-5 py-4"><div><h2 className="font-bold text-slate-900">База клиентов</h2><p className="mt-0.5 text-sm text-slate-500">Найдено: {filteredClients.length}</p></div></div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1280px] text-left text-sm">
-                <thead><tr className="border-b bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">{["Клиент", "Телефон", "Адрес", "Источник", "Кол-во заказов", "Последний заказ", "Общая сумма", "Остаток к оплате", "Действия"].map((heading) => <th key={heading} className="whitespace-nowrap px-4 py-3.5">{heading}</th>)}</tr></thead>
+            <div>
+              <table className="w-full text-left text-sm">
+                <thead><tr className="border-b bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">{["Клиент", "Телефон", "Адрес", "Источник", "Кол-во заказов", "Последний заказ", "Общая сумма", "Остаток к оплате", "Действия"].map((heading, index) => <th key={heading} className={`whitespace-nowrap px-4 py-3.5 ${[2, 3, 4, 6].includes(index) ? "hidden 2xl:table-cell" : ""}`}>{heading}</th>)}</tr></thead>
                 <tbody>
                   {filteredClients.map((client) => {
                     const totals = getClientTotals(client);
@@ -107,11 +107,11 @@ export function ClientsList() {
                           </Link>
                         </td>
                         <td className="whitespace-nowrap px-4 py-4 text-slate-600">{client.phone}</td>
-                        <td className="max-w-[260px] px-4 py-4 text-slate-600">{client.address}</td>
-                        <td className="px-4 py-4"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{client.source}</span></td>
-                        <td className="px-4 py-4 font-semibold">{client.orders.length}</td>
+                        <td className="hidden max-w-[260px] px-4 py-4 text-slate-600 2xl:table-cell">{client.address}</td>
+                        <td className="hidden px-4 py-4 2xl:table-cell"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{client.source}</span></td>
+                        <td className="hidden px-4 py-4 font-semibold 2xl:table-cell">{client.orders.length}</td>
                         <td className="whitespace-nowrap px-4 py-4"><Link href={`/orders/${lastOrder.id}`} className="font-semibold text-brand-700 hover:underline">{lastOrder.id}</Link></td>
-                        <td className="whitespace-nowrap px-4 py-4 font-semibold">{money(totals.amount)}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-4 font-semibold 2xl:table-cell">{money(totals.amount)}</td>
                         <td className={`whitespace-nowrap px-4 py-4 font-bold ${totals.remaining ? "text-orange-600" : "text-emerald-600"}`}>{money(totals.remaining)}</td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">

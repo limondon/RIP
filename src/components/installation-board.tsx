@@ -118,11 +118,36 @@ export function InstallationBoard() {
           {view === "list" && (
             <section className="workspace-panel overflow-hidden">
               <div className="border-b px-5 py-4"><h2 className="font-bold text-slate-900">Список установок</h2><p className="mt-0.5 text-sm text-slate-500">Найдено: {filtered.length}</p></div>
-              <div className="data-table-scroll">
-                <table className="w-full min-w-[1700px] text-left text-sm">
-                  <thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["№ заказа", "Клиент", "Телефон", "Кладбище", "Участок / ряд / место", "Тип изделия", "Дата", "Время", "Бригада", "Статус", "Комментарий", "Действия"].map((item, index) => <th key={item} className={`px-4 py-3 ${index === 0 ? "record-cell !bg-slate-50" : ""}`}>{item}</th>)}</tr></thead>
-                  <tbody>{filtered.map((job) => <tr key={job.id} className={`border-b transition hover:bg-slate-50 last:border-0 ${job.status === "Проблема" ? "bg-red-50/50" : job.status === "Перенос" ? "bg-orange-50/50" : ""}`}><td className="record-cell px-4 py-4"><Link href={`/orders/${job.orderId}`} className="record-link"><Eye className="h-4 w-4" />{job.orderId}</Link></td><td className="px-4 py-4 font-medium">{job.client}</td><td className="px-4 py-4">{job.phone}</td><td className="px-4 py-4">{job.cemetery}</td><td className="px-4 py-4 text-slate-600">{job.place}</td><td className="px-4 py-4 text-slate-600">{job.product}</td><td className="px-4 py-4"><input className="input h-9 min-w-36" type="date" value={job.date} onChange={(event) => updateJob(job.id, { date: event.target.value }, "Дата установки изменена")} /></td><td className="px-4 py-4"><input className="input h-9 min-w-28" type="time" value={job.time} onChange={(event) => updateJob(job.id, { time: event.target.value }, "Время установки изменено")} /></td><td className="px-4 py-4"><select className="input h-9 min-w-56" value={job.brigadeId} onChange={(event) => updateJob(job.id, { brigadeId: event.target.value }, "Бригада назначена")}>{brigades.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.members}</option>)}</select></td><td className="px-4 py-4"><select className="input h-9 min-w-36" value={job.status} onChange={(event) => updateJob(job.id, { status: event.target.value as InstallationStatus }, "Статус установки изменён")}>{installationStatuses.map((item) => <option key={item}>{item}</option>)}</select><div className="mt-2"><StatusBadge status={job.status} /></div></td><td className="px-4 py-4"><input className="input h-9 min-w-64" value={job.comment} onChange={(event) => updateJob(job.id, { comment: event.target.value }, "Комментарий установки обновлен")} /></td><td className="px-4 py-4"><Link href={`/orders/${job.orderId}`} className="btn-secondary h-9">Открыть заказ</Link></td></tr>)}</tbody>
-                </table>
+              <div className="divide-y">
+                {filtered.map((job) => (
+                  <article key={job.id} className={`p-5 transition hover:bg-slate-50/70 ${job.status === "Проблема" ? "bg-red-50/50" : job.status === "Перенос" ? "bg-orange-50/50" : ""}`}>
+                    <div className="grid gap-5 xl:grid-cols-[minmax(220px,0.8fr)_minmax(240px,1fr)_minmax(420px,1.6fr)]">
+                      <div className="min-w-0">
+                        <Link href={`/orders/${job.orderId}`} className="record-link"><Eye className="h-4 w-4" />{job.orderId}</Link>
+                        <p className="mt-3 font-semibold text-slate-900">{job.client}</p>
+                        <p className="mt-1 text-sm text-slate-500">{job.phone}</p>
+                        <p className="mt-3 text-sm text-slate-600">{job.product}</p>
+                      </div>
+                      <div className="min-w-0 border-slate-200 xl:border-l xl:pl-5">
+                        <p className="text-xs font-semibold uppercase text-slate-400">Место установки</p>
+                        <p className="mt-2 font-semibold text-slate-800">{job.cemetery}</p>
+                        <p className="mt-1 text-sm text-slate-500">{job.place}</p>
+                        <div className="mt-3"><StatusBadge status={job.status} /></div>
+                      </div>
+                      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                        <label className="min-w-0"><span className="mb-1.5 block text-xs font-semibold uppercase text-slate-400">Дата</span><input className="input h-10" type="date" value={job.date} onChange={(event) => updateJob(job.id, { date: event.target.value }, "Дата установки изменена")} /></label>
+                        <label className="min-w-0"><span className="mb-1.5 block text-xs font-semibold uppercase text-slate-400">Время</span><input className="input h-10" type="time" value={job.time} onChange={(event) => updateJob(job.id, { time: event.target.value }, "Время установки изменено")} /></label>
+                        <label className="min-w-0"><span className="mb-1.5 block text-xs font-semibold uppercase text-slate-400">Бригада</span><select className="input h-10" value={job.brigadeId} onChange={(event) => updateJob(job.id, { brigadeId: event.target.value }, "Бригада назначена")}>{brigades.map((item) => <option key={item.id} value={item.id}>{item.name} — {item.members}</option>)}</select></label>
+                        <label className="min-w-0"><span className="mb-1.5 block text-xs font-semibold uppercase text-slate-400">Статус</span><select className="input h-10" value={job.status} onChange={(event) => updateJob(job.id, { status: event.target.value as InstallationStatus }, "Статус установки изменён")}>{installationStatuses.map((item) => <option key={item}>{item}</option>)}</select></label>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 lg:grid-cols-[1fr_auto]">
+                      <label className="min-w-0"><span className="sr-only">Комментарий</span><input className="input h-10" value={job.comment} onChange={(event) => updateJob(job.id, { comment: event.target.value }, "Комментарий установки обновлен")} placeholder="Комментарий к установке" /></label>
+                      <Link href={`/orders/${job.orderId}`} className="btn-secondary h-10 whitespace-nowrap">Открыть заказ</Link>
+                    </div>
+                  </article>
+                ))}
+                {!filtered.length && <div className="px-5 py-12 text-center text-sm text-slate-400">Установки не найдены</div>}
               </div>
             </section>
           )}
