@@ -2,6 +2,7 @@ import { clients, documents, installationTasks, inventoryItems, orders, payments
 import { brigades } from "@/data/mock-data";
 import { getStoredStaffMember } from "@/lib/auth/staff";
 import { CLOUD_MUTATION_EVENT, createCloudMutation, type CrmCloudRow, type CrmCloudTable } from "@/lib/data/cloud-sync-events";
+import { resolveOrderRecordId } from "@/lib/order/identifiers";
 import type { Client, CrmEvent, CrmEventType, Document, DocumentType, InstallationTask, InventoryItem, InventoryMovement, InventoryMovementType, InventoryReservation, Order, OrderStatus, Payment, PaymentMethod, PaymentType, ProductionStage, ProductionTask } from "@/types/crm";
 
 const ORDERS_KEY = "pamyat-crm-orders";
@@ -138,11 +139,8 @@ export function getStoredDocumentsByOrderId(orderId: string) {
     .sort((first, second) => second.date.localeCompare(first.date) || second.number.localeCompare(first.number));
 }
 
-const normalizeOrderId = (value: string) => decodeURIComponent(value).toLowerCase().replace(/^зк-/, "zk-");
-
 function findOrderId(value: string) {
-  const normalized = normalizeOrderId(value);
-  return getStoredOrders().find((order) => order.id === normalized || order.orderNumber.toLowerCase() === decodeURIComponent(value).toLowerCase())?.id ?? normalized;
+  return resolveOrderRecordId(value, getStoredOrders());
 }
 
 export function updateStoredOrderStatus(orderId: string, status: OrderStatus) {

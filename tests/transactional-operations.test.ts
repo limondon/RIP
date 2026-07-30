@@ -68,3 +68,8 @@ test("после серверного конфликта локальный ке
   assert.deepEqual(sequence, ["rpc", "refresh", "result"]);
   assert.equal(response.error?.message, "Заказ уже полностью оплачен");
 });
+
+test("платеж и резерв передают Supabase внутренний ключ заказа, а не отображаемый номер", () => {
+  assert.match(criticalOperations, /const orderId = resolveOrderRecordId\(input\.orderId, getStoredOrders\(\)\)/);
+  assert.equal((criticalOperations.match(/p_order_id: orderId/g) ?? []).length, 2);
+});

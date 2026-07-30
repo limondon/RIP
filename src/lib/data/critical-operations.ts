@@ -7,10 +7,12 @@ import {
 import {
   addStoredPaymentForOrder,
   cancelStoredInventoryReservation,
+  getStoredOrders,
   receiveStoredInventoryItem,
   reserveStoredInventoryForOrder,
   writeOffStoredInventoryReservation,
 } from "@/lib/storage";
+import { resolveOrderRecordId } from "@/lib/order/identifiers";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { Client, Order, PaymentMethod, PaymentType } from "@/types/crm";
 
@@ -96,18 +98,19 @@ export async function addOrderPaymentTransaction(input: {
   date: string;
   comment?: string;
 }) {
+  const orderId = resolveOrderRecordId(input.orderId, getStoredOrders());
   return callTransaction(
     "add_order_payment",
     {
       p_operation_id: input.operationId,
-      p_order_id: input.orderId,
+      p_order_id: orderId,
       p_amount: input.amount,
       p_method: input.method,
       p_type: input.type,
       p_date: input.date,
       p_comment: input.comment ?? "",
     },
-    () => addStoredPaymentForOrder(input),
+    () => addStoredPaymentForOrder({ ...input, orderId }),
   );
 }
 
@@ -136,16 +139,17 @@ export async function reserveInventoryTransaction(input: {
   quantity: number;
   comment?: string;
 }) {
+  const orderId = resolveOrderRecordId(input.orderId, getStoredOrders());
   return callTransaction(
     "reserve_inventory_for_order",
     {
       p_operation_id: input.operationId,
       p_item_id: input.itemId,
-      p_order_id: input.orderId,
+      p_order_id: orderId,
       p_quantity: input.quantity,
       p_comment: input.comment ?? "",
     },
-    () => reserveStoredInventoryForOrder(input),
+    () => reserveStoredInventoryForOrder({ ...input, orderId }),
   );
 }
 
