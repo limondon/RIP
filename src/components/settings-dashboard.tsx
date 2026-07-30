@@ -1,19 +1,22 @@
 "use client";
 
 import {
-  AlertTriangle, CheckCircle2, Plus, Save, ShieldCheck, Trash2, UploadCloud, X,
+  AlertTriangle, CheckCircle2, History, Plus, Save, ShieldCheck, Trash2, UploadCloud, X,
 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { brigades as crmBrigades, masters as crmMasters, materials as crmMaterials, serviceCatalog, statuses as crmStatuses, users as crmUsers } from "@/data/mock-data";
 import { canUseSupabaseData } from "@/lib/data/supabase-repository";
+import { getBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/database.types";
 
-type Tab = "Общие" | "Сотрудники" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
+type Tab = "Общие" | "Сотрудники" | "Журнал действий" | "Роли" | "Материалы" | "Услуги" | "Статусы" | "Мастера и бригады" | "Источники клиентов" | "Компания";
 type ModalType = "user" | "material" | "service" | "master" | "crew" | "source" | "status" | null;
 type StaffAdminItem = { id: string; name: string; phone: string; email: string; status: "Активен" | "Неактивен"; lastLogin: string; source: "demo" | "supabase" };
+type StaffActionLogRow = Database["public"]["Tables"]["staff_action_log"]["Row"];
 
-const tabs: Tab[] = ["Общие", "Сотрудники", "Роли", "Материалы", "Услуги", "Статусы", "Мастера и бригады", "Источники клиентов", "Компания"];
+const tabs: Tab[] = ["Общие", "Сотрудники", "Журнал действий", "Роли", "Материалы", "Услуги", "Статусы", "Мастера и бригады", "Источники клиентов", "Компания"];
 const money = (value: number) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
 
 const initialUsers: StaffAdminItem[] = crmUsers.map((user, index) => ({ id: user.id, name: user.name, phone: user.phone, email: user.email, status: user.status, lastLogin: ["сегодня, 09:20", "вчера, 18:05", "15.06.2026", "14.06.2026", "01.06.2026"][index] ?? "не входил", source: "demo" }));
@@ -47,6 +50,30 @@ const sources = [
   ["Повторный клиент", 9, 13, 1370000, true],
   ["Другое", 6, 7, 520000, false],
 ];
+
+function auditState(value: StaffActionLogRow["before_state"]) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, string | number | boolean | null | object | undefined>
+    : {};
+}
+
+function formatAuditChange(entry: StaffActionLogRow) {
+  const before = auditState(entry.before_state);
+  const after = auditState(entry.after_state);
+  if (typeof before.paidAmount === "number" && typeof after.paidAmount === "number") {
+    return `Оплачено: ${money(before.paidAmount)} → ${money(after.paidAmount)}`;
+  }
+  if (typeof before.onHand === "number" && typeof after.onHand === "number") {
+    return `На складе: ${before.onHand} → ${after.onHand}`;
+  }
+  if (typeof before.available === "number" && typeof after.available === "number") {
+    return `Доступно: ${before.available} → ${after.available}`;
+  }
+  if (typeof before.reservationStatus === "string" && typeof after.reservationStatus === "string") {
+    return `Резерв: ${before.reservationStatus} → ${after.reservationStatus}`;
+  }
+  return entry.action;
+}
 
 function Badge({ children, tone = "blue" }: { children: ReactNode; tone?: "blue" | "green" | "red" | "gray" | "orange" }) {
   const styles = {
@@ -85,6 +112,9 @@ export function SettingsDashboard() {
   const [modal, setModal] = useState<ModalType>(null);
   const [users, setUsers] = useState(initialUsers);
   const [staffConnection, setStaffConnection] = useState<"checking" | "demo" | "connected">("checking");
+  const [actionLog, setActionLog] = useState<StaffActionLogRow[]>([]);
+  const [actionLogLoading, setActionLogLoading] = useState(false);
+  const [actionLogError, setActionLogError] = useState("");
   const [materials, setMaterials] = useState(initialMaterials);
   const [services, setServices] = useState(initialServices);
   const [addedMasters, setAddedMasters] = useState<Array<[string, string, string, boolean, number]>>([]);
@@ -152,6 +182,41 @@ export function SettingsDashboard() {
       statuses: addedStatuses,
     }));
   }, [addedCrews, addedMasters, addedSources, addedStatuses, directoriesLoaded]);
+
+  useEffect(() => {
+    if (tab !== "Журнал действий") return;
+    const supabase = getBrowserSupabaseClient();
+    if (!supabase) {
+      setActionLogError("Supabase не настроен");
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      setActionLogLoading(true);
+      const { data, error } = await supabase
+        .from("staff_action_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (!cancelled) {
+        setActionLog((data ?? []) as StaffActionLogRow[]);
+        setActionLogError(error?.message ?? "");
+        setActionLogLoading(false);
+      }
+    };
+
+    void load();
+    const channel = supabase
+      .channel("pamyat-staff-action-log")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "staff_action_log" }, () => void load())
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [tab]);
 
   const notify = (message: string) => {
     setToast(message);
@@ -232,6 +297,8 @@ export function SettingsDashboard() {
           ].map(([label, key]) => <TextField key={key} label={label} value={settings[key as keyof typeof settings]} onChange={(value) => setSettings({ ...settings, [key]: value })} />)}</div><div className="mt-8 rounded-2xl border bg-slate-50 p-5"><h3 className="font-bold">Нумерация заказов</h3><div className="mt-4 grid gap-4 md:grid-cols-4"><TextField label="Префикс заказа" value={settings.orderPrefix} onChange={(value) => setSettings({ ...settings, orderPrefix: value })} /><TextField label="Текущий год" value={settings.year} onChange={(value) => setSettings({ ...settings, year: value })} /><TextField label="Следующий номер заказа" value={settings.nextNumber} onChange={(value) => setSettings({ ...settings, nextNumber: value })} /><div><span className="field-label">Пример номера</span><div className="flex h-11 items-center rounded-lg border bg-white px-3.5 font-bold text-brand-700">{exampleNumber}</div></div></div></div><div className="mt-6 flex flex-wrap gap-2"><button className="btn-primary" onClick={saveSettings}><Save className="h-4 w-4" />Сохранить настройки</button></div></section></>}
 
           {tab === "Сотрудники" && <section className="card"><div className="mb-5 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Сотрудники</h2><p className="text-sm text-slate-500">Один тип доступа: сотрудник CRM</p></div><button className="btn-primary" onClick={() => openModal("user")}><Plus className="h-4 w-4" />Добавить сотрудника</button></div>{staffConnection !== "connected" && <div className="mb-5 flex gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><b>Supabase admin key пока не подключен.</b><br />Добавление работает в демо-список. Для реального создания нужны `SUPABASE_SERVICE_ROLE_KEY` и `STAFF_ADMIN_SETUP_TOKEN` в Vercel.</div></div>}<Table headers={["Имя", "Телефон", "Email", "Статус", "Источник", "Последний вход", "Действия"]}>{filteredUsers.map((user) => <tr key={user.email} className="border-b last:border-0"><Td strong>{user.name}</Td><Td>{user.phone}</Td><Td>{user.email}</Td><Td><Badge tone={user.status === "Активен" ? "green" : "gray"}>{user.status}</Badge></Td><Td><Badge tone={user.source === "supabase" ? "blue" : "orange"}>{user.source === "supabase" ? "Supabase" : "Демо"}</Badge></Td><Td>{user.lastLogin}</Td><Td><Actions /></Td></tr>)}</Table></section>}
+
+          {tab === "Журнал действий" && <section className="card"><div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><History className="h-5 w-5" /></span><div><h2 className="text-lg font-bold">Журнал действий сотрудников</h2><p className="text-sm text-slate-500">Платежи, возвраты, резервы, поступления и списания из общей базы</p></div></div>{actionLogError && <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">{actionLogError}</div>}{actionLogLoading && !actionLog.length ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-400">Загружаем журнал...</div> : <Table headers={["Когда", "Сотрудник", "Действие", "Объект", "Заказ", "Изменение"]}>{actionLog.map((entry) => <tr key={entry.id} className="border-b last:border-0"><Td>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(new Date(entry.created_at))}</Td><Td strong>{entry.staff_name}</Td><Td>{entry.summary}</Td><Td>{entry.entity_id}</Td><Td>{entry.order_id ? <Link className="font-semibold text-brand-700" href={`/orders/${entry.order_id}`}>{entry.order_id}</Link> : "—"}</Td><Td>{formatAuditChange(entry)}</Td></tr>)}</Table>}{!actionLogLoading && !actionLog.length && !actionLogError && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-400">Записей пока нет</div>}</section>}
 
           {tab === "Роли" && <section className="grid gap-5 xl:grid-cols-2">{Object.entries(access).map(([role, rights]) => <div key={role} className="card"><div className="mb-4 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700"><ShieldCheck className="h-5 w-5" /></span><div><h2 className="font-bold">{role}</h2><p className="text-sm text-slate-500">Права доступа</p></div></div><div className="grid gap-3 sm:grid-cols-2">{permissions.map((permission) => <label key={permission} className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3 text-sm font-medium"><input type="checkbox" checked={rights.includes(permission) || rights.includes(`${permission}: просмотр`)} onChange={(event) => setAccess((current) => ({ ...current, [role]: event.target.checked ? Array.from(new Set([...current[role], permission])) : current[role].filter((item) => item !== permission && item !== `${permission}: просмотр`) }))} />{permission}</label>)}</div><button className="btn-primary mt-5" onClick={saveAccess}><Save className="h-4 w-4" />Сохранить права</button></div>)}</section>}
 

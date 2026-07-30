@@ -14,15 +14,26 @@ const DOCUMENTS_KEY = "pamyat-crm-documents";
 const INVENTORY_KEY = "pamyat-crm-inventory";
 const INVENTORY_RESERVATIONS_KEY = "pamyat-crm-inventory-reservations";
 const INVENTORY_MOVEMENTS_KEY = "pamyat-crm-inventory-movements";
+let cloudMutationSuppressionDepth = 0;
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
 function notifyCloudDataChanged(table: CrmCloudTable, previousRows: CrmCloudRow[], nextRows: CrmCloudRow[]) {
+  if (cloudMutationSuppressionDepth > 0) return;
   if (typeof window === "undefined" || typeof window.dispatchEvent !== "function" || typeof CustomEvent === "undefined") return;
   const mutation = createCloudMutation(table, previousRows, nextRows);
   if (mutation) window.dispatchEvent(new CustomEvent(CLOUD_MUTATION_EVENT, { detail: mutation }));
+}
+
+export function withoutCloudMutationNotifications<T>(callback: () => T): T {
+  cloudMutationSuppressionDepth += 1;
+  try {
+    return callback();
+  } finally {
+    cloudMutationSuppressionDepth = Math.max(0, cloudMutationSuppressionDepth - 1);
+  }
 }
 
 function read<T>(key: string, fallback: T[]): T[] {

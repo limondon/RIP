@@ -4,7 +4,6 @@ import {
   addStoredClient,
   addStoredInstallationTask,
   addStoredOrder,
-  addStoredPayment,
   addStoredProductionTask,
   generateOrderNumber,
   getStoredClients,
@@ -16,10 +15,9 @@ import {
   saveStoredClients,
   saveStoredInstallationTasks,
   saveStoredOrders,
-  saveStoredPayments,
   saveStoredProductionTasks,
 } from "@/lib/storage";
-import type { Client, InstallationTask, Order, OrderItem as CrmOrderItem, OrderService as CrmOrderService, Payment, PaymentMethod, ProductionTask } from "@/types/crm";
+import type { Client, InstallationTask, Order, OrderItem as CrmOrderItem, OrderService as CrmOrderService, PaymentMethod, ProductionTask } from "@/types/crm";
 
 export const DRAFT_STORAGE_KEY = "pamyat-order-draft";
 export const LAST_ORDER_STORAGE_KEY = "pamyat-last-order";
@@ -78,21 +76,6 @@ function calculatePaidAmount(orderId: string) {
   return getStoredPayments()
     .filter((payment) => payment.orderId === orderId)
     .reduce((sum, payment) => sum + (payment.type === "Возврат" ? -payment.amount : payment.amount), 0);
-}
-
-function syncOrderPayment(order: Order, paidAmount: number, method: PaymentMethod) {
-  const otherPayments = getStoredPayments().filter((payment) => payment.orderId !== order.id);
-  const payment = paidAmount > 0 ? [{
-    id: `pay-${order.id}`,
-    orderId: order.id,
-    clientId: order.clientId,
-    date: order.createdAt,
-    amount: paidAmount,
-    method,
-    type: paidAmount >= order.totalAmount ? "Полная оплата" as const : "Предоплата" as const,
-    comment: "Платеж обновлен из карточки заказа",
-  }] : [];
-  saveStoredPayments([...payment, ...otherPayments]);
 }
 
 export function createFormFromStoredOrder(orderId: string): OrderFormData | null {
@@ -187,7 +170,8 @@ export function updateStoredOrderFromForm(orderId: string, form: OrderFormData) 
   };
   saveStoredClients([client, ...clients.filter((item) => item.id !== client.id && item.id !== existingOrder.clientId)]);
 
-  const paidAmount = Math.max(0, Number(form.payment.prepayment) || 0);
+  const requestedPaidAmount = Math.max(0, Number(form.payment.prepayment) || 0);
+  const currentPaidAmount = calculatePaidAmount(existingOrder.id);
   const services: CrmOrderService[] = form.services.map((service) => ({
     id: service.id.startsWith(existingOrder.id) ? service.id : `${existingOrder.id}-${service.id}`,
     orderId: existingOrder.id,
@@ -234,12 +218,11 @@ export function updateStoredOrderFromForm(orderId: string, form: OrderFormData) 
     services,
     items,
     totalAmount: totals.total,
-    paidAmount,
-    remainingAmount: Math.max(0, totals.total - paidAmount),
+    paidAmount: currentPaidAmount,
+    remainingAmount: Math.max(0, totals.total - currentPaidAmount),
     deadline: form.customer.orderDate || existingOrder.deadline,
   };
   saveStoredOrders(getStoredOrders().map((item) => item.id === existingOrder.id ? order : item));
-  syncOrderPayment(order, paidAmount, normalizePaymentMethod(form.payment.paymentMethod));
   recordCrmEvent({
     orderId: order.id,
     clientId: client.id,
@@ -255,7 +238,12 @@ export function updateStoredOrderFromForm(orderId: string, form: OrderFormData) 
     saveStoredInstallationTasks([{ id: `install-${Date.now()}`, orderId: order.id, brigadeId: "brigade-001", date: "", time: "", status: "Не назначена", comment: "Установка будет назначена после готовности изделия" }, ...getStoredInstallationTasks()]);
   }
 
-  return { order, client, paymentCreated: paidAmount > 0 };
+  return {
+    order,
+    client,
+    paymentAdjustment: requestedPaidAmount - currentPaidAmount,
+    paymentMethod: normalizePaymentMethod(form.payment.paymentMethod),
+  };
 }
 
 export function createStoredOrderFromForm(form: OrderFormData) {
@@ -277,7 +265,7 @@ export function createStoredOrderFromForm(form: OrderFormData) {
   const orderId = orderNumberToId(orderNumber);
   const services: CrmOrderService[] = form.services.map((service) => ({ id: `${orderId}-${service.id}`, orderId, name: service.name, selected: service.selected, price: service.price }));
   const items: CrmOrderItem[] = form.items.map((item, index) => ({ id: `${orderId}-item-${index + 1}`, orderId, name: item.name, size: item.size, material: item.material, quantity: item.quantity, price: item.price, total: item.total }));
-  const paidAmount = Math.max(0, Number(form.payment.prepayment) || 0);
+  const initialPaymentAmount = Math.max(0, Number(form.payment.prepayment) || 0);
   const order: Order = {
     id: orderId,
     orderNumber,
@@ -308,8 +296,8 @@ export function createStoredOrderFromForm(form: OrderFormData) {
     services,
     items,
     totalAmount: totals.total,
-    paidAmount,
-    remainingAmount: Math.max(0, totals.total - paidAmount),
+    paidAmount: 0,
+    remainingAmount: totals.total,
     status: "Новый",
     deadline: form.customer.orderDate || new Date().toISOString().slice(0, 10),
     createdAt: form.customer.orderDate || new Date().toISOString().slice(0, 10),
@@ -322,19 +310,6 @@ export function createStoredOrderFromForm(form: OrderFormData) {
     title: "Заказ создан",
     detail: `Создан заказ ${orderNumber}`,
   });
-
-  if (paidAmount > 0) {
-    const method = normalizePaymentMethod(form.payment.paymentMethod);
-    const payment: Payment = { id: `pay-${Date.now()}`, orderId, clientId: client.id, date: order.createdAt, amount: paidAmount, method, type: "Предоплата", comment: "Предоплата при создании заказа" };
-    addStoredPayment(payment);
-    recordCrmEvent({
-      orderId,
-      clientId: client.id,
-      type: "payment",
-      title: "Получена предоплата",
-      detail: `${new Intl.NumberFormat("ru-RU").format(paidAmount)} ₽, ${method}`,
-    });
-  }
 
   const production: ProductionTask = { id: `prod-${Date.now()}`, orderId, stage: "Ожидает макет", masterId: "master-005", startedAt: order.createdAt, plannedReadyAt: order.deadline, comment: "Создано автоматически при оформлении заказа" };
   const installation: InstallationTask = { id: `install-${Date.now()}`, orderId, brigadeId: "brigade-001", date: "", time: "", status: "Не назначена", comment: "Установка будет назначена после готовности изделия" };
@@ -355,5 +330,10 @@ export function createStoredOrderFromForm(form: OrderFormData) {
     detail: "Статус: Не назначена",
   });
 
-  return { order, client, paymentCreated: paidAmount > 0 };
+  return {
+    order,
+    client,
+    initialPaymentAmount,
+    paymentMethod: normalizePaymentMethod(form.payment.paymentMethod),
+  };
 }

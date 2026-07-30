@@ -6,18 +6,21 @@ import {
   ShoppingCart, Trash2, X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import {
-  cancelStoredInventoryReservation,
+  cancelInventoryReservationTransaction,
+  createOperationId,
+  receiveInventoryTransaction,
+  reserveInventoryTransaction,
+  writeOffInventoryReservationTransaction,
+} from "@/lib/data/critical-operations";
+import {
   getStoredInventoryAvailable,
   getStoredInventoryItems,
   getStoredInventoryMovements,
   getStoredInventoryReservations,
   getStoredOrders,
-  receiveStoredInventoryItem,
-  reserveStoredInventoryForOrder,
-  writeOffStoredInventoryReservation,
 } from "@/lib/storage";
 import type { InventoryItem, InventoryMovement, InventoryReservation, Order } from "@/types/crm";
 
@@ -49,6 +52,8 @@ export function WarehouseDashboard() {
   const [quantity, setQuantity] = useState("1");
   const [comment, setComment] = useState("");
   const [toast, setToast] = useState("");
+  const [criticalAction, setCriticalAction] = useState<string | null>(null);
+  const criticalActionRef = useRef(false);
 
   const refresh = () => {
     const nextItems = getStoredInventoryItems();
@@ -85,23 +90,43 @@ export function WarehouseDashboard() {
   const lowStock = items.filter((item) => getStoredInventoryAvailable(item.id) <= item.minStock);
   const categories = Array.from(new Set(items.map((item) => item.category)));
 
-  const submitAction = () => {
+  const submitAction = async () => {
     if (!selectedItem) return notify("Выберите материал");
-    const amount = Number(quantity) || 0;
-    const result = mode === "receive"
-      ? receiveStoredInventoryItem(selectedItem, amount, comment)
-      : reserveStoredInventoryForOrder({ itemId: selectedItem, orderId: selectedOrder, quantity: amount, comment });
-    if (!result.ok) return notify(result.error);
-    refresh();
-    setComment("");
-    notify(mode === "receive" ? "Поступление сохранено" : "Резерв создан");
+    if (criticalActionRef.current) return;
+    criticalActionRef.current = true;
+    setCriticalAction("submit");
+    try {
+      const operationId = createOperationId();
+      const amount = Number(quantity) || 0;
+      const result = mode === "receive"
+        ? await receiveInventoryTransaction({ operationId, itemId: selectedItem, quantity: amount, comment })
+        : await reserveInventoryTransaction({ operationId, itemId: selectedItem, orderId: selectedOrder, quantity: amount, comment });
+      if (!result.ok) return notify(result.error);
+      refresh();
+      setComment("");
+      notify(mode === "receive" ? "Поступление сохранено" : "Резерв создан");
+    } finally {
+      criticalActionRef.current = false;
+      setCriticalAction(null);
+    }
   };
 
-  const closeReservation = (reservationId: string, action: "writeOff" | "cancel") => {
-    const result = action === "writeOff" ? writeOffStoredInventoryReservation(reservationId) : cancelStoredInventoryReservation(reservationId);
-    if (!result.ok) return notify(result.error);
-    refresh();
-    notify(action === "writeOff" ? "Материал списан" : "Резерв снят");
+  const closeReservation = async (reservationId: string, action: "writeOff" | "cancel") => {
+    if (criticalActionRef.current) return;
+    criticalActionRef.current = true;
+    setCriticalAction(reservationId);
+    try {
+      const input = { operationId: createOperationId(), reservationId };
+      const result = action === "writeOff"
+        ? await writeOffInventoryReservationTransaction(input)
+        : await cancelInventoryReservationTransaction(input);
+      if (!result.ok) return notify(result.error);
+      refresh();
+      notify(action === "writeOff" ? "Материал списан" : "Резерв снят");
+    } finally {
+      criticalActionRef.current = false;
+      setCriticalAction(null);
+    }
   };
 
   return (
@@ -135,7 +160,7 @@ export function WarehouseDashboard() {
               {mode === "reserve" && <label><span className="field-label">Заказ</span><select className="input" value={selectedOrder} onChange={(event) => setSelectedOrder(event.target.value)}>{orders.map((order) => <option key={order.id} value={order.id}>{order.orderNumber}</option>)}</select></label>}
               <label><span className="field-label">Количество</span><input className="input" inputMode="decimal" value={quantity} onChange={(event) => setQuantity(event.target.value)} /></label>
               <label><span className="field-label">Комментарий</span><input className="input" value={comment} onChange={(event) => setComment(event.target.value)} placeholder={mode === "receive" ? "Поставка, накладная" : "Под какой элемент заказа"} /></label>
-              <button className="btn-primary self-end whitespace-nowrap" onClick={submitAction}>{mode === "receive" ? <ShoppingCart className="h-4 w-4" /> : <PackageCheck className="h-4 w-4" />}{mode === "receive" ? "Принять" : "Зарезервировать"}</button>
+              <button className="btn-primary self-end whitespace-nowrap" disabled={criticalAction !== null} onClick={() => void submitAction()}>{mode === "receive" ? <ShoppingCart className="h-4 w-4" /> : <PackageCheck className="h-4 w-4" />}{criticalAction === "submit" ? "Сохраняем..." : mode === "receive" ? "Принять" : "Зарезервировать"}</button>
             </div>
           </section>
 
@@ -155,7 +180,7 @@ export function WarehouseDashboard() {
             <div className="grid gap-6 xl:grid-cols-2">
               <section className="card">
                 <div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Активные резервы</h2><p className="mt-0.5 text-sm text-slate-500">Материал закреплен за заказом</p></div><button className="icon-button" title="Обновить" onClick={refresh}><RotateCcw className="h-4 w-4" /></button></div>
-                <div className="space-y-3">{activeReservations.map((reservation) => { const item = items.find((row) => row.id === reservation.itemId); const order = orders.find((row) => row.id === reservation.orderId); return <div key={reservation.id} className="rounded-xl border bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/orders/${reservation.orderId}`} className="font-semibold text-brand-700 hover:underline">{order?.orderNumber ?? reservation.orderId}</Link><p className="mt-1 text-sm text-slate-700">{item?.name ?? "Материал"}</p><p className="mt-1 text-xs text-slate-500">{reservation.quantity} {item?.unit ?? "шт."} · {reservation.comment}</p></div><div className="flex gap-1"><button className="icon-button text-emerald-600" title="Списать в заказ" onClick={() => closeReservation(reservation.id, "writeOff")}><CheckCircle2 className="h-4 w-4" /></button><button className="icon-button text-red-600" title="Снять резерв" onClick={() => closeReservation(reservation.id, "cancel")}><Trash2 className="h-4 w-4" /></button></div></div></div>; })}{!activeReservations.length && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-400">Активных резервов нет</div>}</div>
+                <div className="space-y-3">{activeReservations.map((reservation) => { const item = items.find((row) => row.id === reservation.itemId); const order = orders.find((row) => row.id === reservation.orderId); return <div key={reservation.id} className="rounded-xl border bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/orders/${reservation.orderId}`} className="font-semibold text-brand-700 hover:underline">{order?.orderNumber ?? reservation.orderId}</Link><p className="mt-1 text-sm text-slate-700">{item?.name ?? "Материал"}</p><p className="mt-1 text-xs text-slate-500">{reservation.quantity} {item?.unit ?? "шт."} · {reservation.comment}</p></div><div className="flex gap-1"><button className="icon-button text-emerald-600" disabled={criticalAction !== null} title="Списать в заказ" onClick={() => void closeReservation(reservation.id, "writeOff")}><CheckCircle2 className="h-4 w-4" /></button><button className="icon-button text-red-600" disabled={criticalAction !== null} title="Снять резерв" onClick={() => void closeReservation(reservation.id, "cancel")}><Trash2 className="h-4 w-4" /></button></div></div></div>; })}{!activeReservations.length && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-400">Активных резервов нет</div>}</div>
               </section>
 
               <section className="card">

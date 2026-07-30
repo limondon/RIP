@@ -26,27 +26,30 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
 import { HeaderTools } from "@/components/header-tools";
 import { brigades, masters } from "@/data/mock-data";
+import {
+  addOrderPaymentTransaction,
+  cancelInventoryReservationTransaction,
+  createOperationId,
+  reserveInventoryTransaction,
+  writeOffInventoryReservationTransaction,
+} from "@/lib/data/critical-operations";
 import type { OrderDetails as OrderDetailsData, OrderStatus } from "@/lib/order/mock-orders";
 import { getOrderById, orderStatuses, statusStyles } from "@/lib/order/mock-orders";
 import {
-  addStoredPaymentForOrder,
   addStoredDocumentForOrder,
-  cancelStoredInventoryReservation,
   getStoredDocumentsByOrderId,
   getStoredEventsByOrderId,
   getStoredInventoryAvailable,
   getStoredInventoryItems,
   getStoredInventoryReservations,
-  reserveStoredInventoryForOrder,
   updateStoredInstallationTask,
   updateStoredOrderStatus,
   updateStoredProductionStage,
   updateStoredProductionTask,
-  writeOffStoredInventoryReservation,
 } from "@/lib/storage";
 import type { CrmEvent, Document, DocumentType, InstallationStatus, InventoryItem, InventoryReservation, PaymentMethod, PaymentType, ProductionStage, ProductionTask } from "@/types/crm";
 
@@ -115,6 +118,8 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
     comment: "",
   });
   const [toast, setToast] = useState("");
+  const [criticalAction, setCriticalAction] = useState<string | null>(null);
+  const criticalActionRef = useRef(false);
 
   const notify = (message: string) => {
     setToast(message);
@@ -191,44 +196,73 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
     setPaymentModal(true);
   };
 
-  const savePayment = () => {
+  const savePayment = async () => {
     if (!order) return;
-    const result = addStoredPaymentForOrder({
-      orderId: order.id,
-      amount: Number(paymentForm.amount) || 0,
-      method: paymentForm.method,
-      type: paymentForm.type,
-      date: paymentForm.date,
-      comment: paymentForm.comment,
-    });
-    if (!result.ok) {
-      notify(result.error);
-      return;
+    if (criticalActionRef.current) return;
+    criticalActionRef.current = true;
+    setCriticalAction("payment");
+    try {
+      const result = await addOrderPaymentTransaction({
+        operationId: createOperationId(),
+        orderId: order.id,
+        amount: Number(paymentForm.amount) || 0,
+        method: paymentForm.method,
+        type: paymentForm.type,
+        date: paymentForm.date,
+        comment: paymentForm.comment,
+      });
+      if (!result.ok) {
+        notify(result.error);
+        return;
+      }
+      refreshOrder();
+      setPaymentModal(false);
+      notify(`${paymentForm.type}: ${money(result.payment.amount)} сохранено`);
+    } finally {
+      criticalActionRef.current = false;
+      setCriticalAction(null);
     }
-    refreshOrder();
-    setPaymentModal(false);
-    notify(`${paymentForm.type}: ${money(result.payment.amount)} сохранено`);
   };
 
-  const reserveInventory = () => {
+  const reserveInventory = async () => {
     if (!order) return;
-    const result = reserveStoredInventoryForOrder({
-      orderId: order.id,
-      itemId: inventoryForm.itemId,
-      quantity: Number(inventoryForm.quantity) || 0,
-      comment: inventoryForm.comment,
-    });
-    if (!result.ok) return notify(result.error);
-    refreshOrder();
-    setInventoryForm((form) => ({ ...form, comment: "", quantity: "1" }));
-    notify("Материал зарезервирован под заказ");
+    if (criticalActionRef.current) return;
+    criticalActionRef.current = true;
+    setCriticalAction("reserve");
+    try {
+      const result = await reserveInventoryTransaction({
+        operationId: createOperationId(),
+        orderId: order.id,
+        itemId: inventoryForm.itemId,
+        quantity: Number(inventoryForm.quantity) || 0,
+        comment: inventoryForm.comment,
+      });
+      if (!result.ok) return notify(result.error);
+      refreshOrder();
+      setInventoryForm((form) => ({ ...form, comment: "", quantity: "1" }));
+      notify("Материал зарезервирован под заказ");
+    } finally {
+      criticalActionRef.current = false;
+      setCriticalAction(null);
+    }
   };
 
-  const closeInventoryReservation = (reservationId: string, action: "writeOff" | "cancel") => {
-    const result = action === "writeOff" ? writeOffStoredInventoryReservation(reservationId) : cancelStoredInventoryReservation(reservationId);
-    if (!result.ok) return notify(result.error);
-    refreshOrder();
-    notify(action === "writeOff" ? "Материал списан в заказ" : "Резерв снят");
+  const closeInventoryReservation = async (reservationId: string, action: "writeOff" | "cancel") => {
+    if (criticalActionRef.current) return;
+    criticalActionRef.current = true;
+    setCriticalAction(reservationId);
+    try {
+      const input = { operationId: createOperationId(), reservationId };
+      const result = action === "writeOff"
+        ? await writeOffInventoryReservationTransaction(input)
+        : await cancelInventoryReservationTransaction(input);
+      if (!result.ok) return notify(result.error);
+      refreshOrder();
+      notify(action === "writeOff" ? "Материал списан в заказ" : "Резерв снят");
+    } finally {
+      criticalActionRef.current = false;
+      setCriticalAction(null);
+    }
   };
 
   const createOrderDocument = (type: DocumentType) => {
@@ -457,12 +491,12 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
                 <label><span className="field-label">Материал</span><select className="input" value={inventoryForm.itemId} onChange={(event) => setInventoryForm((form) => ({ ...form, itemId: event.target.value }))}>{inventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name} · доступно {getStoredInventoryAvailable(item.id)} {item.unit}</option>)}</select></label>
                 <label><span className="field-label">Количество</span><input className="input" inputMode="decimal" value={inventoryForm.quantity} onChange={(event) => setInventoryForm((form) => ({ ...form, quantity: event.target.value }))} /></label>
                 <label><span className="field-label">Комментарий</span><input className="input" value={inventoryForm.comment} onChange={(event) => setInventoryForm((form) => ({ ...form, comment: event.target.value }))} placeholder="Например: стела или цветник" /></label>
-                <button className="btn-primary self-end" onClick={reserveInventory}><PackageCheck className="h-4 w-4" />Зарезервировать</button>
+                <button className="btn-primary self-end" disabled={criticalAction !== null} onClick={() => void reserveInventory()}><PackageCheck className="h-4 w-4" />{criticalAction === "reserve" ? "Резервируем..." : "Зарезервировать"}</button>
               </div>
               {selectedInventoryItem && <p className="mt-3 text-sm text-slate-500">Выбрано: <b className="text-slate-800">{selectedInventoryItem.name}</b>, доступно {getStoredInventoryAvailable(selectedInventoryItem.id)} {selectedInventoryItem.unit}, ячейка {selectedInventoryItem.location}.</p>}
             </Section>
             <Section title="Резервы заказа" subtitle="Активный резерв можно списать в заказ или снять со склада без списания">
-              <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["Материал", "Количество", "Статус", "Комментарий", "Создан", "Действия"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{inventoryReservations.map((reservation) => { const item = inventoryItems.find((row) => row.id === reservation.itemId); return <tr key={reservation.id} className="border-b last:border-0"><td className="px-4 py-4"><p className="font-semibold text-slate-900">{item?.name ?? "Материал"}</p><p className="mt-1 text-xs text-slate-500">{item?.location ?? "Склад"}</p></td><td className="px-4 py-4 font-semibold">{reservation.quantity} {item?.unit ?? "шт."}</td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reservation.status === "Активен" ? "bg-blue-50 text-blue-700" : reservation.status === "Списан" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{reservation.status}</span></td><td className="px-4 py-4 text-slate-600">{reservation.comment}</td><td className="px-4 py-4 text-slate-500">{formatEventDate(reservation.createdAt)}</td><td className="px-4 py-4"><div className="flex gap-2">{reservation.status === "Активен" ? <><button className="btn-secondary h-9" onClick={() => closeInventoryReservation(reservation.id, "writeOff")}>Списать</button><button className="btn-secondary h-9 border-red-200 text-red-700 hover:bg-red-50" onClick={() => closeInventoryReservation(reservation.id, "cancel")}>Снять</button></> : <span className="text-xs text-slate-400">Закрыт</span>}</div></td></tr>; })}{!inventoryReservations.length && <tr><td className="px-4 py-8 text-center text-slate-400" colSpan={6}>Резервов по заказу пока нет</td></tr>}</tbody></table></div>
+              <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b bg-slate-50 text-xs uppercase text-slate-500">{["Материал", "Количество", "Статус", "Комментарий", "Создан", "Действия"].map((item) => <th key={item} className="px-4 py-3">{item}</th>)}</tr></thead><tbody>{inventoryReservations.map((reservation) => { const item = inventoryItems.find((row) => row.id === reservation.itemId); return <tr key={reservation.id} className="border-b last:border-0"><td className="px-4 py-4"><p className="font-semibold text-slate-900">{item?.name ?? "Материал"}</p><p className="mt-1 text-xs text-slate-500">{item?.location ?? "Склад"}</p></td><td className="px-4 py-4 font-semibold">{reservation.quantity} {item?.unit ?? "шт."}</td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reservation.status === "Активен" ? "bg-blue-50 text-blue-700" : reservation.status === "Списан" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{reservation.status}</span></td><td className="px-4 py-4 text-slate-600">{reservation.comment}</td><td className="px-4 py-4 text-slate-500">{formatEventDate(reservation.createdAt)}</td><td className="px-4 py-4"><div className="flex gap-2">{reservation.status === "Активен" ? <><button className="btn-secondary h-9" disabled={criticalAction !== null} onClick={() => void closeInventoryReservation(reservation.id, "writeOff")}>{criticalAction === reservation.id ? "Выполняем..." : "Списать"}</button><button className="btn-secondary h-9 border-red-200 text-red-700 hover:bg-red-50" disabled={criticalAction !== null} onClick={() => void closeInventoryReservation(reservation.id, "cancel")}>Снять</button></> : <span className="text-xs text-slate-400">Закрыт</span>}</div></td></tr>; })}{!inventoryReservations.length && <tr><td className="px-4 py-8 text-center text-slate-400" colSpan={6}>Резервов по заказу пока нет</td></tr>}</tbody></table></div>
               <Link href="/warehouse" className="btn-secondary mt-5"><Package className="h-4 w-4" />Открыть общий склад</Link>
             </Section>
           </div>}
@@ -503,7 +537,7 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
             <label><span className="field-label">Дата</span><input className="input" type="date" value={paymentForm.date} onChange={(event) => setPaymentForm((form) => ({ ...form, date: event.target.value }))} /></label>
             <label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" value={paymentForm.comment} onChange={(event) => setPaymentForm((form) => ({ ...form, comment: event.target.value }))} placeholder="Например: доплата после согласования макета" /></label>
           </div>
-          <div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setPaymentModal(false)}>Отмена</button><button className="btn-primary" onClick={savePayment}>{paymentForm.type === "Возврат" ? "Сохранить возврат" : "Принять деньги"}</button></div>
+          <div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" disabled={criticalAction === "payment"} onClick={() => setPaymentModal(false)}>Отмена</button><button className="btn-primary" disabled={criticalAction !== null} onClick={() => void savePayment()}>{criticalAction === "payment" ? "Сохраняем..." : paymentForm.type === "Возврат" ? "Сохранить возврат" : "Принять деньги"}</button></div>
         </div>
       </div>}
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-500"><Check className="h-4 w-4" /></span>{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}

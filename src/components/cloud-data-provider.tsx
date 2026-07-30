@@ -33,7 +33,7 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
         if (signature === remoteSignature.current) return;
 
         hydrating.current = true;
-        importCrmData(result.snapshot);
+        importCrmData(result.snapshot, { notifyCloud: false });
         hydrating.current = false;
         remoteSignature.current = signature;
         if (refreshContent) setContentVersion((version) => version + 1);

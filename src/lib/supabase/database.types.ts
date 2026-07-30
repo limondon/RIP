@@ -22,6 +22,40 @@ export type Database = {
         Update: Partial<{ email: string; full_name: string; short_name: string; phone: string; active: boolean; created_at: string }>;
         Relationships: [];
       };
+      staff_action_log: {
+        Row: {
+          id: string;
+          operation_id: string;
+          staff_id: string;
+          staff_name: string;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          order_id: string | null;
+          summary: string;
+          before_state: Json;
+          after_state: Json;
+          result: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          operation_id: string;
+          staff_id: string;
+          staff_name: string;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          order_id?: string | null;
+          summary: string;
+          before_state?: Json;
+          after_state?: Json;
+          result?: Json;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
       clients: {
         Row: Client & { created_at: string; updated_at: string };
         Insert: Client & { created_at?: string; updated_at?: string };
@@ -84,7 +118,55 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      add_order_payment: {
+        Args: {
+          p_operation_id: string;
+          p_order_id: string;
+          p_amount: number;
+          p_method: string;
+          p_type: string;
+          p_date: string;
+          p_comment: string;
+        };
+        Returns: Json;
+      };
+      receive_inventory: {
+        Args: {
+          p_operation_id: string;
+          p_item_id: string;
+          p_quantity: number;
+          p_comment: string;
+        };
+        Returns: Json;
+      };
+      reserve_inventory_for_order: {
+        Args: {
+          p_operation_id: string;
+          p_item_id: string;
+          p_order_id: string;
+          p_quantity: number;
+          p_comment: string;
+        };
+        Returns: Json;
+      };
+      write_off_inventory_reservation: {
+        Args: {
+          p_operation_id: string;
+          p_reservation_id: string;
+          p_comment: string;
+        };
+        Returns: Json;
+      };
+      cancel_inventory_reservation: {
+        Args: {
+          p_operation_id: string;
+          p_reservation_id: string;
+          p_comment: string;
+        };
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

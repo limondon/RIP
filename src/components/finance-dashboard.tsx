@@ -6,12 +6,12 @@ import {
   WalletCards, X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { addOrderPaymentTransaction, createOperationId } from "@/lib/data/critical-operations";
 import { financeDebts, FinancePayment, getFinanceDebts, getFinancePayments, getFinancePrepayments, initialFinancePayments, PaymentMethod, PaymentType, calculateFinanceStats } from "@/lib/finance/mock-finance";
 import { getMockClients, mockClients } from "@/lib/clients/mock-clients";
 import { getMockOrders, mockOrders } from "@/lib/order/mock-orders";
-import { addStoredPaymentForOrder } from "@/lib/storage";
 
 const tabs = ["Обзор", "Платежи", "Долги", "Предоплаты", "Отчеты"] as const;
 const methods: PaymentMethod[] = ["Наличные", "Карта", "Перевод", "Расчетный счет"];
@@ -33,6 +33,8 @@ export function FinanceDashboard() {
   const [availableOrders, setAvailableOrders] = useState(mockOrders);
   const [availableClients, setAvailableClients] = useState(mockClients);
   const [form, setForm] = useState({ orderId: mockOrders[0].id, clientId: mockClients[0].id, amount: "", method: "Перевод" as PaymentMethod, type: "Доплата" as PaymentType, date: today, comment: "" });
+  const [savingPayment, setSavingPayment] = useState(false);
+  const savingPaymentRef = useRef(false);
 
   const refreshFinance = () => {
     setPayments(getFinancePayments());
@@ -87,15 +89,31 @@ export function FinanceDashboard() {
     setPaymentStatus("");
     setPaymentDate("");
   };
-  const savePayment = () => {
-    const result = addStoredPaymentForOrder({ orderId: form.orderId, amount: Number(form.amount) || 0, method: form.method, type: form.type, date: form.date, comment: form.comment || "Ручное добавление платежа" });
-    if (!result.ok) {
-      notify(result.error);
-      return;
+  const savePayment = async () => {
+    if (savingPaymentRef.current) return;
+    savingPaymentRef.current = true;
+    setSavingPayment(true);
+    try {
+      const result = await addOrderPaymentTransaction({
+        operationId: createOperationId(),
+        orderId: form.orderId,
+        amount: Number(form.amount) || 0,
+        method: form.method,
+        type: form.type,
+        date: form.date,
+        comment: form.comment || "Ручное добавление платежа",
+      });
+      if (!result.ok) {
+        notify(result.error);
+        return;
+      }
+      refreshFinance();
+      setModal(false);
+      notify("Платеж добавлен");
+    } finally {
+      savingPaymentRef.current = false;
+      setSavingPayment(false);
     }
-    refreshFinance();
-    setModal(false);
-    notify("Платеж добавлен");
   };
 
   return (
@@ -132,7 +150,7 @@ export function FinanceDashboard() {
           {tab === "Отчеты" && <Reports stats={stats} payments={payments} />}
       </AppShell>
 
-      {modal && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-950">{form.type === "Возврат" ? "Оформить возврат" : "Принять оплату"}</h2><p className="mt-1 text-sm text-slate-500">Платеж сохранится в localStorage и обновит заказ, финансы и карточку клиента.</p></div><button className="icon-button text-slate-400 hover:bg-slate-100" onClick={() => setModal(false)}><X className="h-5 w-5" /></button></div><div className="mt-6 grid gap-2 sm:grid-cols-3"><button className={`btn-secondary justify-center ${form.type === "Доплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => setForm({ ...form, type: "Доплата", method: "Перевод" })}>Клиент перевел</button><button className={`btn-secondary justify-center ${form.type === "Полная оплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => { const order = availableOrders.find((item) => item.id === form.orderId); setForm({ ...form, type: "Полная оплата", amount: order ? String(Math.max(0, order.amount - order.paid)) : form.amount, method: "Перевод" }); }}>Оплатить остаток</button><button className={`btn-secondary justify-center ${form.type === "Возврат" ? "border-red-200 bg-red-50 text-red-700" : ""}`} onClick={() => setForm({ ...form, type: "Возврат", amount: "", method: form.method })}>Вернуть деньги</button></div><div className="mt-6 grid gap-4 md:grid-cols-2"><label><span className="field-label">Заказ</span><select className="input" value={form.orderId} onChange={(event) => { const order = availableOrders.find((item) => item.id === event.target.value); const client = availableClients.find((item) => item.name === order?.client); const remaining = order ? Math.max(0, order.amount - order.paid) : 0; setForm({ ...form, orderId: event.target.value, clientId: client?.id ?? form.clientId, amount: remaining ? String(remaining) : "" }); }}>{availableOrders.map((order) => <option key={order.id}>{order.id}</option>)}</select></label><label><span className="field-label">Клиент</span><select className="input" value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })}>{availableClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label><label><span className="field-label">Сумма платежа</span><input className="input" inputMode="numeric" placeholder={form.type === "Возврат" ? "Сколько вернуть" : "Сколько пришло"} disabled={form.type === "Полная оплата"} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label><label><span className="field-label">Способ оплаты</span><select className="input" value={form.method} onChange={(event) => setForm({ ...form, method: event.target.value as PaymentMethod })}>{methods.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Тип платежа</span><select className="input" value={form.type} onChange={(event) => { const type = event.target.value as PaymentType; const order = availableOrders.find((item) => item.id === form.orderId); setForm({ ...form, type, amount: type === "Полная оплата" && order ? String(Math.max(0, order.amount - order.paid)) : "" }); }}>{paymentTypes.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Дата платежа</span><input className="input" type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label><label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" placeholder="Например: перевод от клиента" value={form.comment} onChange={(event) => setForm({ ...form, comment: event.target.value })} /></label></div><div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" onClick={() => setModal(false)}>Отмена</button><button className="btn-primary" onClick={savePayment}>{form.type === "Возврат" ? "Сохранить возврат" : "Принять деньги"}</button></div></div></div>}
+      {modal && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-950">{form.type === "Возврат" ? "Оформить возврат" : "Принять оплату"}</h2><p className="mt-1 text-sm text-slate-500">Платеж безопасно сохранится в общей базе и обновит связанные разделы.</p></div><button className="icon-button text-slate-400 hover:bg-slate-100" disabled={savingPayment} onClick={() => setModal(false)}><X className="h-5 w-5" /></button></div><div className="mt-6 grid gap-2 sm:grid-cols-3"><button className={`btn-secondary justify-center ${form.type === "Доплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => setForm({ ...form, type: "Доплата", method: "Перевод" })}>Клиент перевел</button><button className={`btn-secondary justify-center ${form.type === "Полная оплата" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}`} onClick={() => { const order = availableOrders.find((item) => item.id === form.orderId); setForm({ ...form, type: "Полная оплата", amount: order ? String(Math.max(0, order.amount - order.paid)) : form.amount, method: "Перевод" }); }}>Оплатить остаток</button><button className={`btn-secondary justify-center ${form.type === "Возврат" ? "border-red-200 bg-red-50 text-red-700" : ""}`} onClick={() => setForm({ ...form, type: "Возврат", amount: "", method: form.method })}>Вернуть деньги</button></div><div className="mt-6 grid gap-4 md:grid-cols-2"><label><span className="field-label">Заказ</span><select className="input" value={form.orderId} onChange={(event) => { const order = availableOrders.find((item) => item.id === event.target.value); const client = availableClients.find((item) => item.name === order?.client); const remaining = order ? Math.max(0, order.amount - order.paid) : 0; setForm({ ...form, orderId: event.target.value, clientId: client?.id ?? form.clientId, amount: remaining ? String(remaining) : "" }); }}>{availableOrders.map((order) => <option key={order.id}>{order.id}</option>)}</select></label><label><span className="field-label">Клиент</span><select className="input" value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })}>{availableClients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label><label><span className="field-label">Сумма платежа</span><input className="input" inputMode="numeric" placeholder={form.type === "Возврат" ? "Сколько вернуть" : "Сколько пришло"} disabled={form.type === "Полная оплата"} value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label><label><span className="field-label">Способ оплаты</span><select className="input" value={form.method} onChange={(event) => setForm({ ...form, method: event.target.value as PaymentMethod })}>{methods.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Тип платежа</span><select className="input" value={form.type} onChange={(event) => { const type = event.target.value as PaymentType; const order = availableOrders.find((item) => item.id === form.orderId); setForm({ ...form, type, amount: type === "Полная оплата" && order ? String(Math.max(0, order.amount - order.paid)) : "" }); }}>{paymentTypes.map((item) => <option key={item}>{item}</option>)}</select></label><label><span className="field-label">Дата платежа</span><input className="input" type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label><label className="md:col-span-2"><span className="field-label">Комментарий</span><textarea className="textarea" placeholder="Например: перевод от клиента" value={form.comment} onChange={(event) => setForm({ ...form, comment: event.target.value })} /></label></div><div className="mt-6 flex justify-end gap-2"><button className="btn-secondary" disabled={savingPayment} onClick={() => setModal(false)}>Отмена</button><button className="btn-primary" disabled={savingPayment} onClick={() => void savePayment()}>{savingPayment ? "Сохраняем..." : form.type === "Возврат" ? "Сохранить возврат" : "Принять деньги"}</button></div></div></div>}
       {toast && <div role="status" className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="h-5 w-5 text-emerald-400" />{toast}<button aria-label="Закрыть уведомление" onClick={() => setToast("")}><X className="h-4 w-4 text-slate-400" /></button></div>}
     </>
   );

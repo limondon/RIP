@@ -33,6 +33,7 @@ import {
   updateStoredOrderStatus,
   updateStoredProductionStage,
   updateStoredProductionTask,
+  withoutCloudMutationNotifications,
   writeOffStoredInventoryReservation,
 } from "@/lib/storage";
 import type {
@@ -88,7 +89,7 @@ export function exportCrmData(): CrmDataSnapshot {
   };
 }
 
-export function importCrmData(snapshot: CrmDataSnapshot) {
+export function importCrmData(snapshot: CrmDataSnapshot, options: { notifyCloud?: boolean } = {}) {
   if (!snapshot || snapshot.schemaVersion !== 1 || !snapshot.entities) {
     throw new Error("Некорректный импорт: неподдерживаемый формат файла");
   }
@@ -105,16 +106,21 @@ export function importCrmData(snapshot: CrmDataSnapshot) {
   assertArray(entities.inventoryReservations, "inventoryReservations");
   assertArray(entities.inventoryMovements, "inventoryMovements");
 
-  saveStoredOrders(entities.orders);
-  saveStoredClients(entities.clients);
-  saveStoredPayments(entities.payments);
-  saveStoredProductionTasks(entities.productionTasks);
-  saveStoredInstallationTasks(entities.installationTasks);
-  saveStoredEvents(entities.events);
-  saveStoredDocuments(entities.documents);
-  saveStoredInventoryItems(entities.inventoryItems);
-  saveStoredInventoryReservations(entities.inventoryReservations);
-  saveStoredInventoryMovements(entities.inventoryMovements);
+  const save = () => {
+    saveStoredOrders(entities.orders);
+    saveStoredClients(entities.clients);
+    saveStoredPayments(entities.payments);
+    saveStoredProductionTasks(entities.productionTasks);
+    saveStoredInstallationTasks(entities.installationTasks);
+    saveStoredEvents(entities.events);
+    saveStoredDocuments(entities.documents);
+    saveStoredInventoryItems(entities.inventoryItems);
+    saveStoredInventoryReservations(entities.inventoryReservations);
+    saveStoredInventoryMovements(entities.inventoryMovements);
+  };
+
+  if (options.notifyCloud === false) withoutCloudMutationNotifications(save);
+  else save();
 }
 
 export const crmRepository = {

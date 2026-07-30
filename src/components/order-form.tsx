@@ -24,9 +24,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { StaffMenu } from "@/components/staff-menu";
 import { HeaderTools } from "@/components/header-tools";
+import {
+  addOrderPaymentTransaction,
+  createOperationId,
+  ensureCloudOrderForPayment,
+} from "@/lib/data/critical-operations";
 import { calculateOrderTotals, toNonNegativeNumber, updateOrderItem } from "@/lib/order/calculations";
 import { createInitialOrderData } from "@/lib/order/defaults";
 import {
@@ -152,6 +157,8 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
   const [sidebar, setSidebar] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<OrderFormData | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const { serviceTotal, total, remaining } = useMemo(() => calculateOrderTotals(data), [data]);
   const isEditMode = Boolean(editOrderId);
   const pageTitle = isEditMode ? `Редактирование ${editOrderId}` : "Новый заказ";
@@ -199,7 +206,8 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
     notify("Черновик сохранён");
   };
 
-  const submitOrder = () => {
+  const submitOrder = async () => {
+    if (submittingRef.current) return;
     const nextErrors = validateOrder(data);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
@@ -208,24 +216,90 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
       return;
     }
 
-    if (editOrderId) {
-      const updated = updateStoredOrderFromForm(editOrderId, createOrderSnapshot(data, "created"));
-      if (!updated) {
-        notify("Заказ для редактирования не найден");
+    submittingRef.current = true;
+    setSubmitting(true);
+    let navigatingAway = false;
+    try {
+      if (editOrderId) {
+        const updated = updateStoredOrderFromForm(editOrderId, createOrderSnapshot(data, "created"));
+        if (!updated) {
+          notify("Заказ для редактирования не найден");
+          return;
+        }
+        saveOrderLocally(LAST_ORDER_STORAGE_KEY, createOrderSnapshot(data, "created"));
+
+        const syncResult = await ensureCloudOrderForPayment(updated.order, updated.client);
+        if (!syncResult.ok) {
+          notify(`Заказ сохранен локально, но не отправлен в Supabase: ${syncResult.error}`);
+          navigatingAway = true;
+          window.setTimeout(() => router.push(`/orders/${updated.order.id}`), 900);
+          return;
+        }
+
+        if (updated.paymentAdjustment !== 0) {
+          const paymentResult = await addOrderPaymentTransaction({
+            operationId: createOperationId(),
+            orderId: updated.order.id,
+            amount: Math.abs(updated.paymentAdjustment),
+            method: updated.paymentMethod,
+            type: updated.paymentAdjustment > 0 ? "Доплата" : "Возврат",
+            date: new Date().toISOString().slice(0, 10),
+            comment: "Корректировка оплаты при редактировании заказа",
+          });
+          if (!paymentResult.ok) {
+            notify(`Данные заказа сохранены, оплата не изменена: ${paymentResult.error}`);
+            navigatingAway = true;
+            window.setTimeout(() => router.push(`/orders/${updated.order.id}`), 900);
+            return;
+          }
+        }
+
+        notify("Изменения сохранены");
+        navigatingAway = true;
+        window.setTimeout(() => router.push(`/orders/${updated.order.id}`), 500);
         return;
       }
-      saveOrderLocally(LAST_ORDER_STORAGE_KEY, createOrderSnapshot(data, "created"));
-      notify("Изменения сохранены");
-      window.setTimeout(() => router.push(`/orders/${updated.order.id}`), 500);
-      return;
-    }
 
-    const created = createStoredOrderFromForm(createOrderSnapshot(data, "created"));
-    saveOrderLocally(LAST_ORDER_STORAGE_KEY, createOrderSnapshot(data, "created"));
-    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setDraft(null);
-    notify("Заказ создан");
-    window.setTimeout(() => router.push(`/orders/${created.order.id}`), 500);
+      const created = createStoredOrderFromForm(createOrderSnapshot(data, "created"));
+      saveOrderLocally(LAST_ORDER_STORAGE_KEY, createOrderSnapshot(data, "created"));
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setDraft(null);
+
+      const syncResult = await ensureCloudOrderForPayment(created.order, created.client);
+      if (!syncResult.ok) {
+        notify(`Заказ создан локально, но не отправлен в Supabase: ${syncResult.error}`);
+        navigatingAway = true;
+        window.setTimeout(() => router.push(`/orders/${created.order.id}`), 900);
+        return;
+      }
+
+      if (created.initialPaymentAmount > 0) {
+        const paymentResult = await addOrderPaymentTransaction({
+          operationId: createOperationId(),
+          orderId: created.order.id,
+          amount: created.initialPaymentAmount,
+          method: created.paymentMethod,
+          type: "Предоплата",
+          date: created.order.createdAt,
+          comment: "Предоплата при создании заказа",
+        });
+        if (!paymentResult.ok) {
+          notify(`Заказ создан, предоплата не сохранена: ${paymentResult.error}`);
+          navigatingAway = true;
+          window.setTimeout(() => router.push(`/orders/${created.order.id}`), 900);
+          return;
+        }
+      }
+
+      notify("Заказ создан");
+      navigatingAway = true;
+      window.setTimeout(() => router.push(`/orders/${created.order.id}`), 500);
+    } finally {
+      if (!navigatingAway) {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
+    }
   };
 
   const resetForm = () => {
@@ -598,7 +672,7 @@ export function OrderForm({ editOrderId = null }: { editOrderId?: string | null 
                     </div>
                     <p className="mt-2 text-xs text-orange-700">Оплачено {total ? Math.round(data.payment.prepayment / total * 100) : 0}% от суммы заказа</p>
                   </div>
-                  <button className="btn-primary w-full" onClick={submitOrder}><Check className="h-4 w-4" />{submitLabel}</button>
+                  <button className="btn-primary w-full" disabled={submitting} onClick={() => void submitOrder()}><Check className="h-4 w-4" />{submitting ? "Сохраняем..." : submitLabel}</button>
                 </div>
               </Card>
               <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
