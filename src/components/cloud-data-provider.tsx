@@ -1,6 +1,10 @@
 "use client";
 
 import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
+import {
+  CRITICAL_OPERATION_FEEDBACK_EVENT,
+  type CriticalOperationFeedback,
+} from "@/lib/data/critical-operation-feedback";
 import { registerCloudRefreshTriggers } from "@/lib/data/cloud-refresh-triggers";
 import { CLOUD_MUTATION_EVENT, crmCloudTables, type CrmCloudMutation } from "@/lib/data/cloud-sync-events";
 import { applySupabaseMutation, downloadSupabaseSnapshot, enableCloudSync, isCloudSyncEnabled } from "@/lib/data/supabase-repository";
@@ -10,11 +14,29 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 export function CloudDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
+  const [criticalFeedback, setCriticalFeedback] = useState<CriticalOperationFeedback | null>(null);
+  const criticalFeedbackTimer = useRef<number>();
   const hydrating = useRef(false);
   const refreshing = useRef(false);
   const authenticated = useRef(false);
   const remoteSignature = useRef("");
   const pendingMutations = useRef(0);
+
+  useEffect(() => {
+    const showCriticalFeedback = (event: Event) => {
+      const feedback = (event as CustomEvent<CriticalOperationFeedback>).detail;
+      if (!feedback?.message) return;
+      window.clearTimeout(criticalFeedbackTimer.current);
+      setCriticalFeedback(feedback);
+      criticalFeedbackTimer.current = window.setTimeout(() => setCriticalFeedback(null), 4000);
+    };
+
+    window.addEventListener(CRITICAL_OPERATION_FEEDBACK_EVENT, showCriticalFeedback);
+    return () => {
+      window.clearTimeout(criticalFeedbackTimer.current);
+      window.removeEventListener(CRITICAL_OPERATION_FEEDBACK_EVENT, showCriticalFeedback);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,5 +136,18 @@ export function CloudDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   if (!ready) return <main className="grid min-h-screen place-items-center bg-slate-50 text-sm font-medium text-slate-500">Загружаем данные CRM...</main>;
-  return <Fragment key={contentVersion}>{children}</Fragment>;
+  return (
+    <>
+      <Fragment key={contentVersion}>{children}</Fragment>
+      {criticalFeedback && (
+        <div role="status" className="fixed bottom-6 right-6 z-[70] flex max-w-md items-center gap-3 rounded-xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white shadow-2xl">
+          <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${criticalFeedback.type === "error" ? "bg-amber-500" : "bg-emerald-500"}`}>
+            {criticalFeedback.type === "error" ? "!" : "✓"}
+          </span>
+          <span>{criticalFeedback.message}</span>
+          <button aria-label="Закрыть уведомление" className="text-lg leading-none text-slate-400 hover:text-white" onClick={() => setCriticalFeedback(null)}>×</button>
+        </div>
+      )}
+    </>
+  );
 }

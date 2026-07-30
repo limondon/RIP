@@ -37,6 +37,7 @@ import {
   reserveInventoryTransaction,
   writeOffInventoryReservationTransaction,
 } from "@/lib/data/critical-operations";
+import { publishCriticalOperationFeedback } from "@/lib/data/critical-operation-feedback";
 import type { OrderDetails as OrderDetailsData, OrderStatus } from "@/lib/order/mock-orders";
 import { getOrderById, orderStatuses, statusStyles } from "@/lib/order/mock-orders";
 import {
@@ -213,11 +214,11 @@ export function OrderDetails({ order }: { order: OrderDetailsData | null }) {
       });
       refreshOrder();
       if (!result.ok) {
-        notify(result.error);
+        publishCriticalOperationFeedback(result.error, "error");
         return;
       }
       setPaymentModal(false);
-      notify(`${paymentForm.type}: ${money(result.payment.amount)} сохранено`);
+      publishCriticalOperationFeedback(`${paymentForm.type}: ${money(result.payment.amount)} сохранено`, "success");
     } finally {
       criticalActionRef.current = false;
       setCriticalAction(null);
